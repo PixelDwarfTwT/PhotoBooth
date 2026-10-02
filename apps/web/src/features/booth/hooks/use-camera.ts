@@ -30,7 +30,7 @@ function stopStream(stream: MediaStream | null): void {
   stream?.getTracks().forEach((track) => track.stop());
 }
 
-export function useCamera(): CameraController {
+export function useCamera(onStreamEnded?: () => void): CameraController {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState("");
@@ -40,6 +40,7 @@ export function useCamera(): CameraController {
   const streamRef = useRef<MediaStream | null>(null);
   const requestIdRef = useRef(0);
   const mountedRef = useRef(false);
+  const onStreamEndedRef = useRef(onStreamEnded);
 
   const stopCurrentStream = useCallback(() => {
     const activeStream = streamRef.current;
@@ -116,6 +117,7 @@ export function useCamera(): CameraController {
             "ended",
             () => {
               if (streamRef.current !== nextStream) return;
+              onStreamEndedRef.current?.();
               streamRef.current = null;
               setStream(null);
               setError(cameraIssue("stream-ended"));
@@ -146,6 +148,7 @@ export function useCamera(): CameraController {
         if (!mountedRef.current || requestIdRef.current !== requestId) return false;
         stopCurrentStream();
         setStream(null);
+        if (deviceId) setSelectedDeviceId("");
         setError(cameraIssueFromError(cameraError));
         setStatus("error");
         return false;
@@ -172,6 +175,10 @@ export function useCamera(): CameraController {
       await startCamera({ deviceId: null, facingMode: nextFacingMode });
     }
   }, [facingMode, startCamera]);
+
+  useEffect(() => {
+    onStreamEndedRef.current = onStreamEnded;
+  }, [onStreamEnded]);
 
   useEffect(() => {
     mountedRef.current = true;

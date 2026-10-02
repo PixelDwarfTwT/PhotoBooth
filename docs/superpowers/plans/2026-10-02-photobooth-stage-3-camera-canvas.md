@@ -117,8 +117,8 @@
 - [x] Link the landing-page primary action to `/booth` and preserve public-page metadata.
 - [x] Review layout at narrow/wide CSS breakpoints, focus visibility, labels, keyboard sticker controls, countdown status, and reduced-motion rules by source inspection.
 - [x] Update setup/usage docs and explicitly describe the no-upload default.
-- [ ] Review the complete branch diff against the Stage 3 spec and record findings/rulings.
-- [ ] Commit Task 4.
+- [x] Review the complete branch diff against the Stage 3 spec and record findings/rulings.
+- [x] Commit Task 4.
 
 ## Execution Boundary
 

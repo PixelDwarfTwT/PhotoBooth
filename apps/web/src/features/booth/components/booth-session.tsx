@@ -13,7 +13,26 @@ import type { BoothFilter } from "../types.js";
 const PHOTO_COUNTS = [2, 3, 4, 5, 6] as const;
 const COUNTDOWNS = [3, 5, 10] as const;
 
-function waitForVideoFrame(video: HTMLVideoElement): Promise<void> {
+function abortError(): Error {
+  const error = new Error("Persiapan sesi foto dibatalkan.");
+  error.name = "AbortError";
+  return error;
+}
+
+function isAbortError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "name" in error &&
+    error.name === "AbortError"
+  );
+}
+
+function waitForVideoFrame(
+  video: HTMLVideoElement,
+  signal: AbortSignal,
+): Promise<void> {
+  if (signal.aborted) return Promise.reject(abortError());
   if (
     video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
     video.videoWidth > 0
@@ -31,6 +50,7 @@ function waitForVideoFrame(video: HTMLVideoElement): Promise<void> {
       window.clearTimeout(timeout);
       video.removeEventListener("loadeddata", onReady);
       video.removeEventListener("error", onError);
+      signal.removeEventListener("abort", onAbort);
     }
 
     function onReady() {
@@ -44,25 +64,41 @@ function waitForVideoFrame(video: HTMLVideoElement): Promise<void> {
       reject(new Error("Pratinjau kamera gagal dimuat. Coba aktifkan lagi."));
     }
 
+    function onAbort() {
+      cleanup();
+      reject(abortError());
+    }
+
     video.addEventListener("loadeddata", onReady);
     video.addEventListener("error", onError);
+    signal.addEventListener("abort", onAbort, { once: true });
   });
 }
 
 export function BoothSession() {
-  const camera = useCamera();
   const capture = useCaptureSequence();
+  const preparationAbortRef = useRef<AbortController | null>(null);
+  const sequenceActiveRef = useRef(false);
+  const handleCameraLoss = useCallback(() => {
+    preparationAbortRef.current?.abort();
+    if (sequenceActiveRef.current) capture.cancelSequence();
+  }, [capture.cancelSequence]);
+  const camera = useCamera(handleCameraLoss);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [photoCount, setPhotoCount] = useState(4);
   const [countdownSeconds, setCountdownSeconds] = useState(3);
   const [mirror, setMirror] = useState(true);
   const [selectedFilter, setSelectedFilter] = useState<BoothFilter>("natural");
+  const [isPreparingCapture, setIsPreparingCapture] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-
   const captureBusy =
     capture.phase === "countdown" || capture.phase === "capturing";
-  const settingsLocked = camera.status === "requesting" || capture.photos.length > 0;
+  const settingsLocked =
+    camera.status === "requesting" ||
+    isPreparingCapture ||
+    captureBusy ||
+    capture.photos.length > 0;
 
   useEffect(() => {
     const video = videoRef.current;
@@ -98,57 +134,124 @@ export function BoothSession() {
     }
   }, [camera.error?.code, capture.cancelSequence, captureBusy]);
 
-  const getVideo = useCallback(async () => {
+  useEffect(
+    () => () => {
+      preparationAbortRef.current?.abort();
+    },
+    [],
+  );
+
+  const getVideo = useCallback(async (signal: AbortSignal) => {
     const video = videoRef.current;
     if (!video) throw new Error("Pratinjau kamera belum tersedia.");
-    await waitForVideoFrame(video);
+    await waitForVideoFrame(video, signal);
+    const stream = video.srcObject as MediaStream | null;
+    if (!stream?.getVideoTracks().some((track) => track.readyState === "live")) {
+      throw new Error(
+        "Koneksi kamera terputus. Aktifkan kamera kembali untuk melanjutkan.",
+      );
+    }
     return video;
   }, []);
 
   async function startCaptureSequence(resume: boolean) {
+    if (preparationAbortRef.current || sequenceActiveRef.current) return;
+    const preparation = new AbortController();
+    preparationAbortRef.current = preparation;
     setActionError(null);
-    if (!camera.stream) {
-      const started = await camera.startCamera();
-      if (!started) return;
-    }
+    setIsPreparingCapture(true);
 
-    const video = await getVideo().catch((error: unknown) => {
-      setActionError(
-        error instanceof Error ? error.message : "Kamera belum siap. Coba lagi.",
-      );
-      return null;
-    });
-    if (!video) return;
+    try {
+      if (!camera.stream) {
+        const started = await camera.startCamera();
+        if (!started || preparation.signal.aborted) return;
+      }
 
-    if (resume) {
-      await capture.resumeSequence(video, photoCount, countdownSeconds);
-    } else {
-      await capture.startSequence(video, photoCount, countdownSeconds);
+      const video = await getVideo(preparation.signal);
+      if (preparation.signal.aborted) return;
+
+      preparationAbortRef.current = null;
+      setIsPreparingCapture(false);
+      sequenceActiveRef.current = true;
+      try {
+        if (resume) {
+          await capture.resumeSequence(video, photoCount, countdownSeconds);
+        } else {
+          await capture.startSequence(video, photoCount, countdownSeconds);
+        }
+      } finally {
+        sequenceActiveRef.current = false;
+      }
+    } catch (error) {
+      if (!isAbortError(error)) {
+        setActionError(
+          error instanceof Error
+            ? error.message
+            : "Kamera belum siap. Coba lagi.",
+        );
+      }
+    } finally {
+      if (preparationAbortRef.current === preparation) {
+        preparationAbortRef.current = null;
+      }
+      setIsPreparingCapture(false);
     }
   }
 
   async function retakePhoto(index: number) {
+    if (preparationAbortRef.current || sequenceActiveRef.current) return;
+    const preparation = new AbortController();
+    preparationAbortRef.current = preparation;
     setActionError(null);
-    const cameraStarted = await camera.startCamera();
-    if (!cameraStarted) return;
+    setIsPreparingCapture(true);
 
     try {
-      const video = await getVideo();
-      await capture.retakePhoto(video, index, countdownSeconds);
+      const cameraStarted = await camera.startCamera();
+      if (!cameraStarted || preparation.signal.aborted) return;
+
+      const video = await getVideo(preparation.signal);
+      if (preparation.signal.aborted) return;
+
+      preparationAbortRef.current = null;
+      setIsPreparingCapture(false);
+      sequenceActiveRef.current = true;
+      try {
+        await capture.retakePhoto(video, index, countdownSeconds);
+      } finally {
+        sequenceActiveRef.current = false;
+      }
     } catch (error) {
-      setActionError(
-        error instanceof Error ? error.message : "Kamera belum siap. Coba lagi.",
-      );
-      camera.stopCamera();
+      if (!isAbortError(error)) {
+        setActionError(
+          error instanceof Error ? error.message : "Kamera belum siap. Coba lagi.",
+        );
+        camera.stopCamera();
+      }
+    } finally {
+      if (preparationAbortRef.current === preparation) {
+        preparationAbortRef.current = null;
+      }
+      setIsPreparingCapture(false);
     }
   }
 
   function cancelCapture() {
+    preparationAbortRef.current?.abort();
+    preparationAbortRef.current = null;
     capture.cancelSequence();
     camera.stopCamera();
   }
 
+  function stopCameraFromUser() {
+    preparationAbortRef.current?.abort();
+    preparationAbortRef.current = null;
+    if (sequenceActiveRef.current) capture.cancelSequence();
+    camera.stopCamera();
+  }
+
   function startNewSession() {
+    preparationAbortRef.current?.abort();
+    preparationAbortRef.current = null;
     capture.resetSequence();
     camera.stopCamera();
     setActionError(null);
@@ -224,6 +327,7 @@ export function BoothSession() {
                   type="checkbox"
                   checked={mirror}
                   onChange={(event) => setMirror(event.currentTarget.checked)}
+                  disabled={settingsLocked}
                 />
                 <span>Cerminkan pratinjau dan hasil foto</span>
               </label>
@@ -235,7 +339,7 @@ export function BoothSession() {
                   onChange={(event) =>
                     setSelectedFilter(event.currentTarget.value as BoothFilter)
                   }
-                  disabled={captureBusy}
+                  disabled={settingsLocked}
                 >
                   {BOOTH_FILTERS.map((filter) => (
                     <option key={filter.key} value={filter.key}>
@@ -247,39 +351,41 @@ export function BoothSession() {
             </>
           ) : null}
 
+          {camera.devices.length > 1 ? (
+            <label className={styles.field} htmlFor="camera-device">
+              <span>Pilih kamera</span>
+              <select
+                id="camera-device"
+                value={camera.selectedDeviceId}
+                onChange={(event) =>
+                  void camera.selectCamera(event.currentTarget.value)
+                }
+                disabled={camera.status === "requesting" || settingsLocked}
+              >
+                <option value="">Otomatis</option>
+                {camera.devices.map((device, index) => (
+                  <option key={device.deviceId} value={device.deviceId}>
+                    {device.label || `Kamera ${index + 1}`}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+
           {camera.stream ? (
             <div className={styles.cameraControls}>
-              {camera.devices.length > 1 ? (
-                <label className={styles.field} htmlFor="camera-device">
-                  <span>Pilih kamera</span>
-                  <select
-                    id="camera-device"
-                    value={camera.selectedDeviceId}
-                    onChange={(event) =>
-                      void camera.selectCamera(event.currentTarget.value)
-                    }
-                    disabled={camera.status === "requesting" || captureBusy}
-                  >
-                    {camera.devices.map((device, index) => (
-                      <option key={device.deviceId} value={device.deviceId}>
-                        {device.label || `Kamera ${index + 1}`}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              ) : null}
               <button
                 className={styles.secondaryButton}
                 type="button"
                 onClick={() => void camera.toggleFacingMode()}
-                disabled={camera.status === "requesting" || captureBusy}
+                disabled={camera.status === "requesting" || settingsLocked}
               >
                 Balik kamera depan/belakang
               </button>
               <button
                 className={styles.textButton}
                 type="button"
-                onClick={camera.stopCamera}
+                onClick={stopCameraFromUser}
                 disabled={captureBusy}
               >
                 Matikan kamera
@@ -305,13 +411,13 @@ export function BoothSession() {
               className={`${styles.primaryButton} ${styles.startSessionButton}`}
               type="button"
               onClick={() => void startCaptureSequence(false)}
-              disabled={captureBusy}
+              disabled={captureBusy || isPreparingCapture}
             >
               Mulai sesi foto
             </button>
           ) : null}
 
-          {captureBusy ? (
+          {captureBusy || isPreparingCapture ? (
             <button
               className={styles.textButton}
               type="button"
@@ -412,7 +518,7 @@ export function BoothSession() {
             photos={capture.photos}
             targetCount={photoCount}
             error={capture.error}
-            busy={captureBusy}
+            busy={captureBusy || isPreparingCapture}
             onRetake={(index) => void retakePhoto(index)}
             onMove={capture.movePhoto}
             onContinue={() => void startCaptureSequence(true)}
