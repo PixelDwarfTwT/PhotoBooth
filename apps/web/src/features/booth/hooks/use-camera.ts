@@ -20,7 +20,7 @@ export interface CameraController {
   facingMode: CameraFacingMode;
   status: CameraStatus;
   error: CameraIssue | null;
-  startCamera: (options?: CameraStartOptions) => Promise<void>;
+  startCamera: (options?: CameraStartOptions) => Promise<boolean>;
   selectCamera: (deviceId: string) => Promise<void>;
   toggleFacingMode: () => Promise<void>;
   stopCamera: () => void;
@@ -56,18 +56,18 @@ export function useCamera(): CameraController {
   }, [stopCurrentStream]);
 
   const startCamera = useCallback(
-    async (options?: CameraStartOptions) => {
+    async (options?: CameraStartOptions): Promise<boolean> => {
       if (!window.isSecureContext) {
         setError(cameraIssue("insecure-context"));
         setStatus("error");
-        return;
+        return false;
       }
 
       const mediaDevices = navigator.mediaDevices;
       if (!mediaDevices || typeof mediaDevices.getUserMedia !== "function") {
         setError(cameraIssue("unsupported"));
         setStatus("error");
-        return;
+        return false;
       }
 
       stopCurrentStream();
@@ -97,7 +97,7 @@ export function useCamera(): CameraController {
 
         if (!mountedRef.current || requestIdRef.current !== requestId) {
           stopStream(nextStream);
-          return;
+          return false;
         }
 
         streamRef.current = nextStream;
@@ -141,12 +141,14 @@ export function useCamera(): CameraController {
             // Device labels/listing are optional; the active stream remains usable.
           }
         }
+        return true;
       } catch (cameraError) {
-        if (!mountedRef.current || requestIdRef.current !== requestId) return;
+        if (!mountedRef.current || requestIdRef.current !== requestId) return false;
         stopCurrentStream();
         setStream(null);
         setError(cameraIssueFromError(cameraError));
         setStatus("error");
+        return false;
       }
     },
     [facingMode, selectedDeviceId, stopCurrentStream],

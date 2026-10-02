@@ -16,3 +16,17 @@ export interface CameraIssue {
   code: CameraIssueCode;
   message: string;
 }
+
+export interface CapturedPhoto {
+  id: string;
+  blob: Blob;
+  width: number;
+  height: number;
+}
+
+export type CapturePhase =
+  | "idle"
+  | "countdown"
+  | "capturing"
+  | "complete"
+  | "error";

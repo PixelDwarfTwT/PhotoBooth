@@ -44,7 +44,7 @@
 
 **Interfaces:**
 - `CameraFacingMode = "user" | "environment"`.
-- `CameraController` exposes `stream`, `devices`, `selectedDeviceId`, `facingMode`, `status`, `error`, `startCamera()`, `selectCamera(deviceId)`, and `stopCamera()`.
+- `CameraController` exposes `stream`, `devices`, `selectedDeviceId`, `facingMode`, `status`, `error`, `startCamera(): Promise<boolean>`, `selectCamera(deviceId)`, and `stopCamera()`.
 - `useCamera()` performs no media call on mount. `startCamera` requires the explicit setup action, checks secure context and API support, opens a video-only stream, then enumerates devices.
 - `BoothSession` is a client component. The route page is a server component and exports only no-index metadata.
 
@@ -66,16 +66,16 @@
 
 **Interfaces:**
 - `CapturedPhoto` contains `id`, `blob`, `width`, and `height`; photo bytes stay in browser memory.
-- `useCaptureSequence()` exposes `photos`, `phase`, `currentPhotoIndex`, `countdownValue`, `announcement`, `startSequence(video, count, seconds)`, `retakePhoto(video, index, seconds)`, `cancelSequence()`, and `resetSequence()`.
+- `useCaptureSequence()` exposes `photos`, `phase`, `currentPhotoIndex`, `countdownValue`, `announcement`, `error`, `startSequence(video, count, seconds): Promise<boolean>`, `resumeSequence(video, count, seconds): Promise<boolean>`, `retakePhoto(video, index, seconds): Promise<boolean>`, `cancelSequence()`, `resetSequence()`, and `movePhoto(fromIndex, toIndex)`.
 - `capturePhoto(video)` draws the current unfiltered video frame to a bounded offscreen canvas and returns a Blob-backed photo.
 
-- [ ] Add photo-count choices 2/3/4/5/6 and countdown choices 3/5/10 with defaults 4/3.
-- [ ] Implement an abortable one-second countdown before every capture and a concise `role="status"` announcement.
-- [ ] Capture sequential Blob photos; on sequence completion stop the stream and show numbered review slots.
-- [ ] Add order controls and single-photo retake that restarts the camera only after the retake button is pressed.
-- [ ] Handle capture failure without discarding completed photos; stop tracks and clear timers for cancel, end, or unmount.
-- [ ] Inspect source/diff for resource cleanup and no network photo path; do not run tests or build.
-- [ ] Commit Task 2.
+- [x] Add photo-count choices 2/3/4/5/6 and countdown choices 3/5/10 with defaults 4/3.
+- [x] Implement an abortable one-second countdown before every capture and a concise `role="status"` announcement.
+- [x] Capture sequential Blob photos; on sequence completion stop the stream and show numbered review slots.
+- [x] Add order controls and single-photo retake that restarts the camera only after the retake button is pressed.
+- [x] Handle capture failure without discarding completed photos; stop tracks and clear timers for cancel, end, or unmount.
+- [x] Inspect source/diff for resource cleanup and no network photo path; do not run tests or build.
+- [x] Commit Task 2.
 
 ### Task 3: Canvas composition, filters, stickers, and downloads
 
