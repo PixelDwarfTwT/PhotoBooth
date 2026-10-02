@@ -1,6 +1,6 @@
 # Web Photobooth
 
-Fondasi monorepo untuk photobooth berbasis browser. Kamera dan pengolahan foto akan tetap berjalan di perangkat pengguna. Foto tidak dikirim ke server kecuali pengguna memilih alur simpan cloud pada tahap berikutnya.
+Photobooth berbasis browser dengan alur kamera dan editor lokal di `/booth`. Foto diproses dan disimpan sementara di memori browser, lalu dapat diunduh ke perangkat. Tidak ada unggahan foto ke server.
 
 ## Stack
 
@@ -28,17 +28,27 @@ corepack pnpm dev
 
 Web berjalan di http://localhost:3000; API berjalan di http://127.0.0.1:4000. Endpoint awal API adalah GET /api/health.
 
+## Menggunakan photobooth
+
+1. Buka halaman utama lalu pilih **Mulai sesi foto**.
+2. Di `/booth`, pilih jumlah foto dan timer. Nilai awalnya empat foto dengan hitung mundur tiga detik.
+3. Tekan **Aktifkan kamera** dan izinkan akses kamera di browser. Kamera baru diminta setelah tindakan ini.
+4. Mulai sesi, tinjau atau ulangi foto, lalu atur photo strip atau kolase, filter, dan stiker.
+5. Unduh hasil sebagai PNG atau JPG. Foto dan hasil edit tetap di perangkat.
+
+Kamera memerlukan konteks aman: gunakan `https://` saat mengakses dari perangkat lain. `http://localhost` didukung untuk pengembangan lokal. Jika browser tidak memberi akses kamera atau tidak mendukung ekspor Canvas, halaman akan menampilkan petunjuk untuk mencoba kembali atau memakai browser yang mendukung.
+
 Perintah Prisma migration hanya ditujukan untuk database lokal yang dijalankan dari Compose. Ganti koneksi dan kredensial sebelum memakai database lain; jangan pernah memakai kredensial contoh ini di staging atau production.
 
 ## Workspace
 
-- apps/web: landing page publik Next.js.
+- apps/web: landing page publik Next.js dan sesi photobooth browser-only.
 - apps/api: API Fastify.
 - packages/contracts: skema validasi dan tipe API bersama.
 - packages/db: skema Prisma, migrasi, dan client server-only.
 
 Layanan katalog yang ditambahkan kemudian harus menormalisasi email admin ke huruf kecil, mewajibkan alt text dan catatan lisensi pada setiap aset, serta memvalidasi JSON layout bingkai dan konfigurasi filter sebelum disimpan atau dirender.
 
-## Batas tahap awal
+## Batas fitur saat ini
 
-Branch ini menyediakan fondasi Tahap 1–2. Alur kamera, hitung mundur, editor Canvas, pengelolaan katalog, upload S3, tautan berbagi, QR, dan GIF belum diimplementasikan. Jangan simpan foto pengguna di database atau unggah secara otomatis.
+Editor menyediakan tata letak strip dan kolase dua kolom, empat filter lokal, serta stiker simbol generik. Foto tetap di memori browser dan tidak masuk ke API atau database. Penyimpanan cloud dengan persetujuan, katalog bingkai/filter dinamis, tautan berbagi, kode QR, dan GIF belum tersedia.

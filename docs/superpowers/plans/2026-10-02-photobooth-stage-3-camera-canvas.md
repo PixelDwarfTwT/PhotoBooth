@@ -94,14 +94,14 @@
 - `renderComposition(canvas, input)` redraws the complete local composition and reports whether the requested Canvas filter was applied.
 - `canvasToBlob(canvas, format)` resolves a PNG/JPG Blob or throws a user-displayable export error.
 
-- [ ] Implement bounded 1000px-wide strip and responsive-row grid layouts with local Blob decoding, mirror output, and filter rendering.
-- [ ] Add strip/grid selection and four filter presets with matching CSS-filtered camera preview and Canvas output.
-- [ ] Add a generic sticker palette and pointer/keyboard sticker positioning, resizing, and deletion controls.
-- [ ] Render accessible HTML sticker handles over the Canvas and draw the same placements into the exported composition.
-- [ ] Add PNG/JPG downloads with revocable object URLs; on failure, keep the photo/editor state and show retry guidance.
-- [ ] Add a clear no-filter fallback when Canvas filters are unsupported.
-- [ ] Inspect source/diff for local-only data flow and URL/resource cleanup; do not run tests or build.
-- [ ] Commit Task 3.
+- [x] Implement bounded 1000px-wide strip and responsive-row grid layouts with local Blob decoding, mirror output, and filter rendering.
+- [x] Add strip/grid selection and four filter presets with matching CSS-filtered camera preview and Canvas output.
+- [x] Add a generic sticker palette and pointer/keyboard sticker positioning, resizing, and deletion controls.
+- [x] Render accessible HTML sticker handles over the Canvas and draw the same placements into the exported composition.
+- [x] Add PNG/JPG downloads with revocable object URLs; on failure, keep the photo/editor state and show retry guidance.
+- [x] Add a clear no-filter fallback when Canvas filters are unsupported.
+- [x] Inspect source/diff for local-only data flow and URL/resource cleanup; do not run tests or build.
+- [x] Commit Task 3.
 
 ### Task 4: Landing integration and final static review
 
@@ -114,9 +114,9 @@
 - The primary landing action links to `/booth`; landing metadata remains indexable.
 - README documents HTTPS/localhost camera requirements, the local-only flow, and current static layouts/stickers.
 
-- [ ] Link the landing-page primary action to `/booth` and preserve public-page metadata.
-- [ ] Review layout at narrow/wide CSS breakpoints, focus visibility, labels, keyboard sticker controls, countdown status, and reduced-motion rules by source inspection.
-- [ ] Update setup/usage docs and explicitly describe the no-upload default.
+- [x] Link the landing-page primary action to `/booth` and preserve public-page metadata.
+- [x] Review layout at narrow/wide CSS breakpoints, focus visibility, labels, keyboard sticker controls, countdown status, and reduced-motion rules by source inspection.
+- [x] Update setup/usage docs and explicitly describe the no-upload default.
 - [ ] Review the complete branch diff against the Stage 3 spec and record findings/rulings.
 - [ ] Commit Task 4.
 

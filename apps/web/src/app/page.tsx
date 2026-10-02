@@ -1,18 +1,18 @@
 const steps = [
   {
     number: "01",
-    title: "Pilih gaya",
-    description: "Pilih bingkai dan tampilan yang cocok untuk momenmu.",
+    title: "Siapkan sesi",
+    description: "Pilih jumlah foto, timer, dan kamera sebelum mulai.",
   },
   {
     number: "02",
-    title: "Ambil empat foto",
-    description: "Atur pose dengan hitung mundur sebelum setiap foto.",
+    title: "Ambil foto berurutan",
+    description: "Empat foto dan timer tiga detik sudah dipilih secara default.",
   },
   {
     number: "03",
-    title: "Simpan hasilnya",
-    description: "Unduh langsung. Berbagi ke cloud selalu pilihanmu.",
+    title: "Hias dan simpan",
+    description: "Atur strip, filter, dan stiker lalu unduh ke perangkat.",
   },
 ];
 
@@ -45,8 +45,8 @@ export default function HomePage() {
               Bikin foto seru bareng teman, langsung dari browser. Tanpa akun,
               tanpa aplikasi tambahan.
             </p>
-            <a className="primary-link" href="#cara-kerja">
-              Lihat cara kerja
+            <a className="primary-link" href="/booth">
+              Mulai sesi foto
               <span aria-hidden="true">→</span>
             </a>
             <p className="hero-note">Kamera hanya aktif setelah kamu mulai.</p>
@@ -112,9 +112,8 @@ export default function HomePage() {
             <p className="eyebrow">Privasi dari awal</p>
             <h2 id="privacy-title">Foto tetap di perangkatmu.</h2>
             <p>
-              Pemotretan dan penyusunan foto dilakukan di browser. Simpan ke
-              cloud hanya tersedia jika kamu memilihnya dan menyetujui
-              pengunggahan.
+              Pemotretan, penyusunan, dan unduhan dilakukan di browser. Foto
+              tidak diunggah; fitur penyimpanan cloud belum tersedia.
             </p>
           </div>
         </section>
