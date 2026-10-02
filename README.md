@@ -37,6 +37,8 @@ Perintah Prisma migration hanya ditujukan untuk database lokal yang dijalankan d
 - packages/contracts: skema validasi dan tipe API bersama.
 - packages/db: skema Prisma, migrasi, dan client server-only.
 
+Layanan katalog yang ditambahkan kemudian harus menormalisasi email admin ke huruf kecil, mewajibkan alt text dan catatan lisensi pada setiap aset, serta memvalidasi JSON layout bingkai dan konfigurasi filter sebelum disimpan atau dirender.
+
 ## Batas tahap awal
 
 Branch ini menyediakan fondasi Tahap 1–2. Alur kamera, hitung mundur, editor Canvas, pengelolaan katalog, upload S3, tautan berbagi, QR, dan GIF belum diimplementasikan. Jangan simpan foto pengguna di database atau unggah secara otomatis.

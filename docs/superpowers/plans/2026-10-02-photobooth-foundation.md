@@ -85,6 +85,7 @@
 **Files:**
 - Create: apps/web/package.json
 - Create: apps/web/tsconfig.json
+- Create: apps/web/next-env.d.ts
 - Create: apps/web/next.config.ts
 - Create: apps/web/src/app/layout.tsx
 - Create: apps/web/src/app/page.tsx
