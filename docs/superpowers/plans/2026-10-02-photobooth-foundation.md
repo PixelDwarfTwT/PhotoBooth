@@ -23,7 +23,7 @@
 
 ## Review Focus
 
-- Missing or malformed API configuration must fail with a readable startup error; owned by Task 2.
+- Malformed explicitly supplied API configuration must fail with a readable startup error; absent HOST/PORT use safe local defaults as specified in Task 2.
 - Health response JSON must match the shared contract; owned by Task 2.
 - Prisma client and generated database code must stay server-only and out of the Next.js client bundle; owned by Tasks 3 and 4.
 - Catalog JSON and publication windows require application validation before they are used; schema constraints are described in Task 4 and application enforcement is deferred to catalog API work.
@@ -47,13 +47,13 @@
 - Consumes: None.
 - Produces: A pnpm workspace with apps/web, apps/api, packages/contracts, and packages/db; root scripts for dev, build, typecheck, and database commands; a local PostgreSQL service; and documented environment setup.
 
-- [ ] Create the root package manifest with pinned pnpm 12.8.2, Node.js 24.11+, common TypeScript/formatting tooling, and scripts that build shared/database prerequisites before apps.
-- [ ] Define the four workspace package globs in pnpm-workspace.yaml.
-- [ ] Define shared strict TypeScript compiler options in tsconfig.base.json.
-- [ ] Ignore environment files, dependencies, build output, and generated Prisma client; allow .env.example.
-- [ ] Add a local-only PostgreSQL Compose service with a readiness check and matching example connection string.
-- [ ] Document Windows-compatible setup, database generation/migration commands, app ports, and the local-only credentials.
-- [ ] Commit the workspace foundation.
+- [x] Create the root package manifest with pinned pnpm 12.8.2, Node.js 24.11+, common TypeScript/formatting tooling, and scripts that build shared/database prerequisites before apps.
+- [x] Define the four workspace package globs in pnpm-workspace.yaml.
+- [x] Define shared strict TypeScript compiler options in tsconfig.base.json.
+- [x] Ignore environment files, dependencies, build output, and generated Prisma client; allow .env.example.
+- [x] Add a local-only PostgreSQL Compose service with a readiness check and matching example connection string.
+- [x] Document Windows-compatible setup, database generation/migration commands, app ports, and the local-only credentials.
+- [x] Commit the workspace foundation.
 
 ### Task 2: Shared API contract and Fastify health service
 
@@ -73,12 +73,12 @@
 - Consumes: Workspace scripts from Task 1.
 - Produces: HealthResponseSchema and HealthResponse from @photobooth/contracts; buildServer(): FastifyInstance; and a GET /api/health route returning the shared response shape.
 
-- [ ] Implement the health response Zod schema and inferred TypeScript type.
-- [ ] Configure the contracts package to emit ESM JavaScript and declaration files.
-- [ ] Parse PORT and HOST with Zod and produce a concise startup error for invalid values.
-- [ ] Build a Fastify app factory and register GET /api/health with a response validated by the shared schema.
-- [ ] Start Fastify on 0.0.0.0 only when the configured HOST requests it; use a safe local default.
-- [ ] Commit the contract and API scaffold.
+- [x] Implement the health response Zod schema and inferred TypeScript type.
+- [x] Configure the contracts package to emit ESM JavaScript and declaration files.
+- [x] Parse PORT and HOST with Zod and produce a concise startup error for invalid values.
+- [x] Build a Fastify app factory and register GET /api/health with a response validated by the shared schema.
+- [x] Start Fastify on 0.0.0.0 only when the configured HOST requests it; use a safe local default.
+- [x] Commit the contract and API scaffold.
 
 ### Task 3: Next.js public landing shell
 
@@ -95,10 +95,10 @@
 - Consumes: Workspace scripts from Task 1 and the public product constraints in the spec.
 - Produces: A responsive Indonesian landing shell with descriptive public-page metadata, semantic navigation/content, and no camera, photo, account, or cloud behavior in the client.
 
-- [ ] Configure Next.js App Router, React, CSS Modules/global CSS, and strict TypeScript.
-- [ ] Add Indonesian document language and indexable title/description metadata.
-- [ ] Add a mobile-first landing shell that explains local photo processing and optional cloud sharing without implying an implemented camera flow.
-- [ ] Commit the web shell.
+- [x] Configure Next.js App Router, React, CSS Modules/global CSS, and strict TypeScript.
+- [x] Add Indonesian document language and indexable title/description metadata.
+- [x] Add a mobile-first landing shell that explains local photo processing and optional cloud sharing without implying an implemented camera flow.
+- [x] Commit the web shell.
 
 ### Task 4: Prisma 7 catalog and sharing metadata schema
 
@@ -109,19 +109,20 @@
 - Create: packages/db/prisma/schema.prisma
 - Create: packages/db/src/client.ts
 - Create: packages/db/src/index.ts
+- Create: packages/db/src/browser-error.ts
 
 **Interfaces:**
 - Consumes: Workspace scripts and environment contract from Task 1.
 - Produces: Prisma models Theme, Asset, Frame, Filter, PoseGuide, ShareLink, and AdminUser; server-only Prisma client exported from @photobooth/db; and scripts for client generation, local migration, and Prisma Studio.
 
-- [ ] Configure Prisma 7 ESM client generation into the database package, PostgreSQL datasource configuration, and local root .env loading.
-- [ ] Define lifecycle, asset-type, and admin-role enums.
-- [ ] Define all seven models with UUID keys, PRD fields, named relations, mapped table/column names, timestamps, and indexes.
-- [ ] Use JSON columns for frame layouts and filter parameters; document that API code must validate these values before persistence or rendering.
-- [ ] Store a fixed-width SHA-256 token hash rather than the raw share token; store only the private object key, content metadata, consent version, and retention timestamps.
-- [ ] Export a development-safe singleton Prisma client using the PostgreSQL adapter; fail clearly if DATABASE_URL is absent when the runtime client is imported.
-- [ ] Add package scripts for prisma generate, prisma migrate dev, and prisma studio; do not apply a migration against an assumed database.
-- [ ] Commit the database package and schema.
+- [x] Configure Prisma 7 ESM client generation into the database package, PostgreSQL datasource configuration, and local root .env loading.
+- [x] Define lifecycle, asset-type, and admin-role enums.
+- [x] Define all seven models with UUID keys, PRD fields, named relations, mapped table/column names, timestamps, and indexes.
+- [x] Use JSON columns for frame layouts and filter parameters; document that API code must validate these values before persistence or rendering.
+- [x] Store a fixed-width SHA-256 token hash rather than the raw share token; store only the private object key, content metadata, consent version, and retention timestamps.
+- [x] Export a development-safe singleton Prisma client using the PostgreSQL adapter; fail clearly if DATABASE_URL is absent when the runtime client is imported.
+- [x] Add package scripts for prisma generate, prisma migrate dev, and prisma studio; do not apply a migration against an assumed database.
+- [x] Commit the database package and schema.
 
 ## Execution Constraints
 

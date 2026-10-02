@@ -9,7 +9,7 @@
     "pnpm": ">=12.8.2"
   },
   "scripts": {
-    "dev": "pnpm --filter @photobooth/contracts build && pnpm --filter @photobooth/db db:generate && pnpm --parallel --filter @photobooth/web --filter @photobooth/api dev",
+    "dev": "pnpm --filter @photobooth/contracts build && pnpm --filter @photobooth/db build && pnpm --parallel --filter @photobooth/web --filter @photobooth/api dev",
     "build": "pnpm --filter @photobooth/contracts build && pnpm --filter @photobooth/db build && pnpm --parallel --filter @photobooth/web --filter @photobooth/api build",
     "typecheck": "pnpm --filter @photobooth/contracts build && pnpm --filter @photobooth/db typecheck && pnpm --parallel --filter @photobooth/web --filter @photobooth/api typecheck",
     "db:generate": "pnpm --filter @photobooth/db db:generate",
