@@ -23,3 +23,4 @@ Thumbs.db
 
 # Local plan execution artifacts
 .superpowers/
+.worktrees/
