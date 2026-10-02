@@ -1,0 +1,24 @@
+{
+  "name": "photobooth",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.8.2",
+  "engines": {
+    "node": ">=24.11.0",
+    "pnpm": ">=12.8.2"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @photobooth/contracts build && pnpm --filter @photobooth/db db:generate && pnpm --parallel --filter @photobooth/web --filter @photobooth/api dev",
+    "build": "pnpm --filter @photobooth/contracts build && pnpm --filter @photobooth/db build && pnpm --parallel --filter @photobooth/web --filter @photobooth/api build",
+    "typecheck": "pnpm --filter @photobooth/contracts build && pnpm --filter @photobooth/db typecheck && pnpm --parallel --filter @photobooth/web --filter @photobooth/api typecheck",
+    "db:generate": "pnpm --filter @photobooth/db db:generate",
+    "db:migrate": "pnpm --filter @photobooth/db db:migrate",
+    "db:studio": "pnpm --filter @photobooth/db db:studio",
+    "format": "prettier --write \"apps/**/*.{ts,tsx,css,json}\" \"packages/**/*.{ts,json,prisma}\" \"*.{json,yaml,yml,md}\"",
+    "format:check": "prettier --check \"apps/**/*.{ts,tsx,css,json}\" \"packages/**/*.{ts,json,prisma}\" \"*.{json,yaml,yml,md}\""
+  },
+  "devDependencies": {
+    "prettier": "3.9.9"
+  }
+}

@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Build output
+.next/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Local environment
+.env
+.env.*
+!.env.example
+
+# Generated Prisma client
+packages/db/src/generated/prisma/
+
+# Editors and operating systems
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
+
+# Local plan execution artifacts
+.superpowers/
