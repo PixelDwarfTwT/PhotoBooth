@@ -48,12 +48,12 @@
 - `useCamera()` performs no media call on mount. `startCamera` requires the explicit setup action, checks secure context and API support, opens a video-only stream, then enumerates devices.
 - `BoothSession` is a client component. The route page is a server component and exports only no-index metadata.
 
-- [ ] Add the `/booth` route with `robots: { index: false, follow: false }` and no session-specific metadata.
-- [ ] Implement typed camera errors for insecure context, unsupported API, denied permission, missing camera, and camera-in-use cases.
-- [ ] Implement camera startup, device enumeration after permission, camera replacement, and idempotent track cleanup.
-- [ ] Build the setup and preview UI with accessible camera permission explanation, explicit activation, camera selector after permission, mirror toggle, and stop control.
-- [ ] Add source/diff inspection notes to the execution ledger; do not run tests or build.
-- [ ] Commit Task 1.
+- [x] Add the `/booth` route with `robots: { index: false, follow: false }` and no session-specific metadata.
+- [x] Implement typed camera errors for insecure context, unsupported API, denied permission, missing camera, and camera-in-use cases.
+- [x] Implement camera startup, device enumeration after permission, camera replacement, and idempotent track cleanup.
+- [x] Build the setup and preview UI with accessible camera permission explanation, explicit activation, camera selector after permission, mirror toggle, and stop control.
+- [x] Add source/diff inspection notes to the execution ledger; do not run tests or build.
+- [x] Commit Task 1.
 
 ### Task 2: Countdown capture, review, and retakes
 
