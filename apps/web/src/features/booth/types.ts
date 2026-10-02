@@ -30,3 +30,15 @@ export type CapturePhase =
   | "capturing"
   | "complete"
   | "error";
+
+export type BoothLayout = "strip" | "grid";
+
+export type BoothFilter = "natural" | "warm" | "soft" | "mono";
+
+export interface StickerPlacement {
+  id: string;
+  symbol: string;
+  x: number;
+  y: number;
+  fontSize: number;
+}

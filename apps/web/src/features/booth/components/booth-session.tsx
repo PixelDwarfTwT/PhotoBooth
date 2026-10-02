@@ -4,8 +4,11 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useCamera } from "../hooks/use-camera.js";
 import { useCaptureSequence } from "../hooks/use-capture-sequence.js";
+import { BOOTH_FILTERS, getBoothFilter } from "../lib/editor-options.js";
 import { CaptureReview } from "./capture-review.js";
+import { PhotoEditor } from "./photo-editor.js";
 import styles from "./booth-session.module.css";
+import type { BoothFilter } from "../types.js";
 
 const PHOTO_COUNTS = [2, 3, 4, 5, 6] as const;
 const COUNTDOWNS = [3, 5, 10] as const;
@@ -53,6 +56,7 @@ export function BoothSession() {
   const [photoCount, setPhotoCount] = useState(4);
   const [countdownSeconds, setCountdownSeconds] = useState(3);
   const [mirror, setMirror] = useState(true);
+  const [selectedFilter, setSelectedFilter] = useState<BoothFilter>("natural");
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -214,14 +218,33 @@ export function BoothSession() {
           </div>
 
           {capture.photos.length === 0 ? (
-            <label className={styles.checkField}>
-              <input
-                type="checkbox"
-                checked={mirror}
-                onChange={(event) => setMirror(event.currentTarget.checked)}
-              />
-              <span>Cerminkan pratinjau dan hasil foto</span>
-            </label>
+            <>
+              <label className={styles.checkField}>
+                <input
+                  type="checkbox"
+                  checked={mirror}
+                  onChange={(event) => setMirror(event.currentTarget.checked)}
+                />
+                <span>Cerminkan pratinjau dan hasil foto</span>
+              </label>
+              <label className={styles.field} htmlFor="preview-filter">
+                <span>Filter pratinjau</span>
+                <select
+                  id="preview-filter"
+                  value={selectedFilter}
+                  onChange={(event) =>
+                    setSelectedFilter(event.currentTarget.value as BoothFilter)
+                  }
+                  disabled={captureBusy}
+                >
+                  {BOOTH_FILTERS.map((filter) => (
+                    <option key={filter.key} value={filter.key}>
+                      {filter.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </>
           ) : null}
 
           {camera.stream ? (
@@ -343,6 +366,7 @@ export function BoothSession() {
             <video
               ref={videoRef}
               className={mirror ? styles.videoMirrored : styles.video}
+              style={{ filter: getBoothFilter(selectedFilter).css }}
               autoPlay
               muted
               playsInline
@@ -396,12 +420,13 @@ export function BoothSession() {
         ) : null}
 
         {capture.photos.length === photoCount && photoCount > 0 ? (
-          <div className={styles.editorPrompt}>
-            <p>Semua foto siap. Lanjut ke editor untuk menyusun photo strip.</p>
-            <button className={styles.textButton} type="button" onClick={startNewSession}>
-              Mulai sesi baru
-            </button>
-          </div>
+          <PhotoEditor
+            photos={capture.photos}
+            mirror={mirror}
+            filter={selectedFilter}
+            onFilterChange={setSelectedFilter}
+            onNewSession={startNewSession}
+          />
         ) : null}
       </div>
     </main>
