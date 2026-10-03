@@ -35,6 +35,7 @@
 ### Task 1: Private booth route and camera controller
 
 **Files:**
+
 - Create: `apps/web/src/app/booth/page.tsx`
 - Create: `apps/web/src/features/booth/types.ts`
 - Create: `apps/web/src/features/booth/lib/camera-errors.ts`
@@ -43,6 +44,7 @@
 - Create: `apps/web/src/features/booth/components/booth-session.module.css`
 
 **Interfaces:**
+
 - `CameraFacingMode = "user" | "environment"`.
 - `CameraController` exposes `stream`, `devices`, `selectedDeviceId`, `facingMode`, `status`, `error`, `startCamera(): Promise<boolean>`, `selectCamera(deviceId)`, and `stopCamera()`.
 - `useCamera()` performs no media call on mount. `startCamera` requires the explicit setup action, checks secure context and API support, opens a video-only stream, then enumerates devices.
@@ -58,6 +60,7 @@
 ### Task 2: Countdown capture, review, and retakes
 
 **Files:**
+
 - Create: `apps/web/src/features/booth/hooks/use-capture-sequence.ts`
 - Create: `apps/web/src/features/booth/lib/capture-photo.ts`
 - Modify: `apps/web/src/features/booth/types.ts`
@@ -65,6 +68,7 @@
 - Modify: `apps/web/src/features/booth/components/booth-session.module.css`
 
 **Interfaces:**
+
 - `CapturedPhoto` contains `id`, `blob`, `width`, and `height`; photo bytes stay in browser memory.
 - `useCaptureSequence()` exposes `photos`, `phase`, `currentPhotoIndex`, `countdownValue`, `announcement`, `error`, `startSequence(video, count, seconds): Promise<boolean>`, `resumeSequence(video, count, seconds): Promise<boolean>`, `retakePhoto(video, index, seconds): Promise<boolean>`, `cancelSequence()`, `resetSequence()`, and `movePhoto(fromIndex, toIndex)`.
 - `capturePhoto(video)` draws the current unfiltered video frame to a bounded offscreen canvas and returns a Blob-backed photo.
@@ -80,6 +84,7 @@
 ### Task 3: Canvas composition, filters, stickers, and downloads
 
 **Files:**
+
 - Create: `apps/web/src/features/booth/lib/canvas-compositor.ts`
 - Create: `apps/web/src/features/booth/lib/editor-options.ts`
 - Create: `apps/web/src/features/booth/components/photo-editor.tsx`
@@ -88,6 +93,7 @@
 - Modify: `apps/web/src/features/booth/components/booth-session.module.css`
 
 **Interfaces:**
+
 - `BoothLayout = "strip" | "grid"`; grid uses two columns and enough rows for the photo count.
 - `BoothFilter = "natural" | "warm" | "soft" | "mono"`; all CSS/Canvas filter values come from a closed constant map.
 - `StickerPlacement` contains a stable ID, generic symbol, normalized `x`/`y`, and bounded font size.
@@ -106,11 +112,13 @@
 ### Task 4: Landing integration and final static review
 
 **Files:**
+
 - Modify: `apps/web/src/app/page.tsx`
 - Modify: `apps/web/src/app/globals.css` only if shared focus/reduced-motion tokens are needed.
 - Modify: `README.md`
 
 **Interfaces:**
+
 - The primary landing action links to `/booth`; landing metadata remains indexable.
 - README documents HTTPS/localhost camera requirements, the local-only flow, and current static layouts/stickers.
 
@@ -122,4 +130,4 @@
 
 ## Execution Boundary
 
-Do not add or run tests, build, typecheck, browser sessions, or migrations unless the user explicitly requests verification. No migration or backend change is part of this stage.
+The original Stage 3 request prohibited tests and builds. A later user request explicitly authorized full verification for the remaining stages, so the integrated workspace tests, typecheck, and build were run; results are recorded in the Stage 5 plan. Real-device camera and browser media behavior still needs hands-on browser verification. No database migration was applied.

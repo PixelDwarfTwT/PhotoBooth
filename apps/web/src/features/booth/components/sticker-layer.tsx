@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { PointerEvent, KeyboardEvent } from "react";
-import type { StickerPlacement } from "../types.js";
+import type { StickerPlacement } from "../types";
 import styles from "./booth-session.module.css";
 
 interface StickerLayerProps {
@@ -60,10 +60,7 @@ export function StickerLayer({
   }
 
   function handlePointerMove(event: PointerEvent<HTMLButtonElement>) {
-    if (
-      activePointerId.current !== event.pointerId ||
-      !layerRef.current
-    ) {
+    if (activePointerId.current !== event.pointerId || !layerRef.current) {
       return;
     }
 

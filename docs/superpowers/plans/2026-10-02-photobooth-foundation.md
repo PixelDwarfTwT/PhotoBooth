@@ -34,6 +34,7 @@
 ### Task 1: Workspace and local development foundation
 
 **Files:**
+
 - Create: package.json
 - Create: pnpm-workspace.yaml
 - Create: tsconfig.base.json
@@ -44,6 +45,7 @@
 - Create: README.md
 
 **Interfaces:**
+
 - Consumes: None.
 - Produces: A pnpm workspace with apps/web, apps/api, packages/contracts, and packages/db; root scripts for dev, build, typecheck, and database commands; a local PostgreSQL service; and documented environment setup.
 
@@ -58,6 +60,7 @@
 ### Task 2: Shared API contract and Fastify health service
 
 **Files:**
+
 - Create: packages/contracts/package.json
 - Create: packages/contracts/tsconfig.json
 - Create: packages/contracts/src/health.ts
@@ -70,6 +73,7 @@
 - Create: apps/api/src/routes/health.ts
 
 **Interfaces:**
+
 - Consumes: Workspace scripts from Task 1.
 - Produces: HealthResponseSchema and HealthResponse from @photobooth/contracts; buildServer(): FastifyInstance; and a GET /api/health route returning the shared response shape.
 
@@ -83,6 +87,7 @@
 ### Task 3: Next.js public landing shell
 
 **Files:**
+
 - Create: apps/web/package.json
 - Create: apps/web/tsconfig.json
 - Create: apps/web/next-env.d.ts
@@ -92,6 +97,7 @@
 - Create: apps/web/src/app/globals.css
 
 **Interfaces:**
+
 - Consumes: Workspace scripts from Task 1 and the public product constraints in the spec.
 - Produces: A responsive Indonesian landing shell with descriptive public-page metadata, semantic navigation/content, and no camera, photo, account, or cloud behavior in the client.
 
@@ -103,6 +109,7 @@
 ### Task 4: Prisma 7 catalog and sharing metadata schema
 
 **Files:**
+
 - Create: packages/db/package.json
 - Create: packages/db/tsconfig.json
 - Create: packages/db/prisma7.config.ts
@@ -112,6 +119,7 @@
 - Create: packages/db/src/browser-error.ts
 
 **Interfaces:**
+
 - Consumes: Workspace scripts and environment contract from Task 1.
 - Produces: Prisma models Theme, Asset, Frame, Filter, PoseGuide, ShareLink, and AdminUser; server-only Prisma client exported from @photobooth/db; and scripts for client generation, local migration, and Prisma Studio.
 
@@ -126,4 +134,4 @@
 
 ## Execution Constraints
 
-No test files or test runs are included because the user requested the code scaffold and has not requested testing or verification. The plan is to leave build, typecheck, migration, and browser verification unclaimed until explicitly requested.
+The original Stage 1/2 scaffold task did not include tests or verification. In a later request, the user authorized implementation of the remaining stages plus independent tests and builds. The integrated workspace verification is recorded in the Stage 5 completion record; no live database migration was applied.

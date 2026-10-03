@@ -1,12 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { cameraIssue, cameraIssueFromError } from "../lib/camera-errors.js";
-import type {
-  CameraFacingMode,
-  CameraIssue,
-  CameraStatus,
-} from "../types.js";
+import { cameraIssue, cameraIssueFromError } from "../lib/camera-errors";
+import type { CameraFacingMode, CameraIssue, CameraStatus } from "../types";
 
 interface CameraStartOptions {
   deviceId?: string | null;
@@ -136,7 +132,9 @@ export function useCamera(onStreamEnded?: () => void): CameraController {
               streamRef.current === nextStream
             ) {
               setDevices(
-                availableDevices.filter((device) => device.kind === "videoinput"),
+                availableDevices.filter(
+                  (device) => device.kind === "videoinput",
+                ),
               );
             }
           } catch {
@@ -145,7 +143,8 @@ export function useCamera(onStreamEnded?: () => void): CameraController {
         }
         return true;
       } catch (cameraError) {
-        if (!mountedRef.current || requestIdRef.current !== requestId) return false;
+        if (!mountedRef.current || requestIdRef.current !== requestId)
+          return false;
         stopCurrentStream();
         setStream(null);
         if (deviceId) setSelectedDeviceId("");

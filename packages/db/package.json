@@ -16,8 +16,8 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
-    "build": "pnpm db:generate && tsc -p tsconfig.json",
-    "typecheck": "pnpm db:generate && tsc --noEmit -p tsconfig.json"
+    "build": "corepack pnpm db:generate && tsc -p tsconfig.json",
+    "typecheck": "corepack pnpm db:generate && tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.0",

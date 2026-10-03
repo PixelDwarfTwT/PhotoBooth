@@ -18,6 +18,7 @@ packages/db/src/generated/prisma/
 # Editors and operating systems
 .vscode/
 .idea/
+.vercel/
 Thumbs.db
 .DS_Store
 

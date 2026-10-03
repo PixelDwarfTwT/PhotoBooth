@@ -2,16 +2,42 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useCamera } from "../hooks/use-camera.js";
-import { useCaptureSequence } from "../hooks/use-capture-sequence.js";
-import { BOOTH_FILTERS, getBoothFilter } from "../lib/editor-options.js";
-import { CaptureReview } from "./capture-review.js";
-import { PhotoEditor } from "./photo-editor.js";
+import { useCamera } from "../hooks/use-camera";
+import { useCaptureSequence } from "../hooks/use-capture-sequence";
+import { BOOTH_FILTERS, getBoothFilter } from "../lib/editor-options";
+import { API_ORIGIN } from "@/lib/api-origin";
+import {
+  readPoseGuideCatalog,
+  type BoothPoseGuideOption,
+} from "../lib/catalog-client";
+import { CaptureReview } from "./capture-review";
+import { PhotoEditor } from "./photo-editor";
 import styles from "./booth-session.module.css";
-import type { BoothFilter } from "../types.js";
+import type { BoothFilter } from "../types";
 
 const PHOTO_COUNTS = [2, 3, 4, 5, 6] as const;
 const COUNTDOWNS = [3, 5, 10] as const;
+const LOCAL_POSE_GUIDES: BoothPoseGuideOption[] = [
+  {
+    title: "Senyum bareng",
+    instruction: "Rapatkan bahu, lihat kamera, lalu senyum bersama.",
+    assetUrl: null,
+    altText: null,
+  },
+  {
+    title: "Pose spontan",
+    instruction: "Saling tunjuk atau tertawa seolah sedang bercerita.",
+    assetUrl: null,
+    altText: null,
+  },
+  {
+    title: "Bentuk hati",
+    instruction:
+      "Gunakan tangan untuk membuat bentuk hati kecil di depan kamera.",
+    assetUrl: null,
+    altText: null,
+  },
+];
 
 function abortError(): Error {
   const error = new Error("Persiapan sesi foto dibatalkan.");
@@ -43,7 +69,9 @@ function waitForVideoFrame(
   return new Promise((resolve, reject) => {
     const timeout = window.setTimeout(() => {
       cleanup();
-      reject(new Error("Pratinjau kamera belum siap. Coba aktifkan kamera lagi."));
+      reject(
+        new Error("Pratinjau kamera belum siap. Coba aktifkan kamera lagi."),
+      );
     }, 5000);
 
     function cleanup() {
@@ -89,6 +117,9 @@ export function BoothSession() {
   const [countdownSeconds, setCountdownSeconds] = useState(3);
   const [mirror, setMirror] = useState(true);
   const [selectedFilter, setSelectedFilter] = useState<BoothFilter>("natural");
+  const [selectedFilterIntensity, setSelectedFilterIntensity] = useState(1);
+  const [poseGuides, setPoseGuides] = useState(LOCAL_POSE_GUIDES);
+  const [poseGuideIndex, setPoseGuideIndex] = useState(0);
   const [isPreparingCapture, setIsPreparingCapture] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -99,6 +130,25 @@ export function BoothSession() {
     isPreparingCapture ||
     captureBusy ||
     capture.photos.length > 0;
+  const currentPoseGuide = poseGuides[poseGuideIndex % poseGuides.length];
+
+  useEffect(() => {
+    if (!API_ORIGIN) return;
+    const controller = new AbortController();
+    void fetch(`${API_ORIGIN}/api/pose-guides`, { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) return [];
+        return readPoseGuideCatalog(await response.json());
+      })
+      .then((guides) => {
+        if (guides.length && !controller.signal.aborted) {
+          setPoseGuides(guides);
+          setPoseGuideIndex(0);
+        }
+      })
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, []);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -146,7 +196,9 @@ export function BoothSession() {
     if (!video) throw new Error("Pratinjau kamera belum tersedia.");
     await waitForVideoFrame(video, signal);
     const stream = video.srcObject as MediaStream | null;
-    if (!stream?.getVideoTracks().some((track) => track.readyState === "live")) {
+    if (
+      !stream?.getVideoTracks().some((track) => track.readyState === "live")
+    ) {
       throw new Error(
         "Koneksi kamera terputus. Aktifkan kamera kembali untuk melanjutkan.",
       );
@@ -223,7 +275,9 @@ export function BoothSession() {
     } catch (error) {
       if (!isAbortError(error)) {
         setActionError(
-          error instanceof Error ? error.message : "Kamera belum siap. Coba lagi.",
+          error instanceof Error
+            ? error.message
+            : "Kamera belum siap. Coba lagi.",
         );
         camera.stopCamera();
       }
@@ -265,7 +319,11 @@ export function BoothSession() {
   return (
     <main className={styles.page}>
       <header className={styles.header}>
-        <Link className={styles.wordmark} href="/" aria-label="Kembali ke beranda">
+        <Link
+          className={styles.wordmark}
+          href="/"
+          aria-label="Kembali ke beranda"
+        >
           <span aria-hidden="true">✳</span>
           <span>photo booth</span>
         </Link>
@@ -284,13 +342,50 @@ export function BoothSession() {
             kamu menekan tombol di bawah.
           </p>
 
+          {currentPoseGuide ? (
+            <section
+              className={styles.poseGuide}
+              aria-label="Ide pose"
+              aria-live="polite"
+            >
+              <div>
+                <p className={styles.poseGuideEyebrow}>Ide pose</p>
+                <h2>{currentPoseGuide.title}</h2>
+                <p>{currentPoseGuide.instruction}</p>
+                {poseGuides.length > 1 ? (
+                  <button
+                    className={styles.poseGuideNext}
+                    type="button"
+                    onClick={() =>
+                      setPoseGuideIndex(
+                        (index) => (index + 1) % poseGuides.length,
+                      )
+                    }
+                    disabled={captureBusy}
+                  >
+                    Ide pose lain
+                  </button>
+                ) : null}
+              </div>
+              {currentPoseGuide.assetUrl && currentPoseGuide.altText ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={currentPoseGuide.assetUrl}
+                  alt={currentPoseGuide.altText}
+                />
+              ) : null}
+            </section>
+          ) : null}
+
           <div className={styles.settingsGrid}>
             <label className={styles.field} htmlFor="photo-count">
               <span>Jumlah foto</span>
               <select
                 id="photo-count"
                 value={photoCount}
-                onChange={(event) => setPhotoCount(Number(event.currentTarget.value))}
+                onChange={(event) =>
+                  setPhotoCount(Number(event.currentTarget.value))
+                }
                 disabled={settingsLocked}
               >
                 {PHOTO_COUNTS.map((count) => (
@@ -472,7 +567,10 @@ export function BoothSession() {
             <video
               ref={videoRef}
               className={mirror ? styles.videoMirrored : styles.video}
-              style={{ filter: getBoothFilter(selectedFilter).css }}
+              style={{
+                filter: getBoothFilter(selectedFilter, selectedFilterIntensity)
+                  .css,
+              }}
               autoPlay
               muted
               playsInline
@@ -497,7 +595,11 @@ export function BoothSession() {
         </section>
 
         {captureBusy || capture.announcement ? (
-          <p className={styles.liveAnnouncement} role="status" aria-live="polite">
+          <p
+            className={styles.liveAnnouncement}
+            role="status"
+            aria-live="polite"
+          >
             {capture.countdownValue !== null ? (
               <span className={styles.countdownNumber} aria-hidden="true">
                 {capture.countdownValue}
@@ -531,6 +633,7 @@ export function BoothSession() {
             mirror={mirror}
             filter={selectedFilter}
             onFilterChange={setSelectedFilter}
+            onFilterIntensityChange={setSelectedFilterIntensity}
             onNewSession={startNewSession}
           />
         ) : null}

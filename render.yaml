@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: photobooth-api-staging
+    runtime: node
+    region: singapore
+    plan: free
+    buildCommand: corepack pnpm install --frozen-lockfile && corepack pnpm --filter @photobooth/contracts build && corepack pnpm --filter @photobooth/db build && corepack pnpm --filter @photobooth/api build
+    startCommand: corepack pnpm --filter @photobooth/api start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: "production"
+      - key: NODE_VERSION
+        value: "24.21.0"
+      - key: HOST
+        value: "0.0.0.0"
+      - key: WEB_ORIGIN
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: SHARE_CONSENT_VERSION
+        value: "2026-10-02"
+      - key: SHARE_TTL_HOURS
+        value: "72"
+      - key: SHARE_MAX_BYTES
+        value: "10485760"
+      - key: SHARE_RATE_LIMIT_MAX
+        value: "5"

@@ -43,7 +43,7 @@ Prisma ORM 7 is selected for the first schema because the official release statu
 
 ## Repository structure
 
-~~~text
+```text
 apps/
   api/
     src/
@@ -84,7 +84,7 @@ package.json
 pnpm-workspace.yaml
 tsconfig.base.json
 README.md
-~~~
+```
 
 The workspace avoids a second independently versioned API contract. The contract package builds to ESM declarations and JavaScript, and both apps consume that package rather than importing from one another.
 
@@ -92,15 +92,15 @@ The workspace avoids a second independently versioned API contract. The contract
 
 Use UUID primary keys and PostgreSQL enums for lifecycle states.
 
-| Model | Purpose and key fields |
-| --- | --- |
-| Theme | name, unique slug, description, optional thumbnail asset, optional start/end dates, DRAFT/SCHEDULED/PUBLISHED/ARCHIVED, timestamps. |
-| Asset | Optional theme, FRAME/STICKER/THUMBNAIL/POSE_ILLUSTRATION, storage key, MIME type, dimensions, byte size, required alt text, required license note, sort order, status. The database stores a storage reference, not binary data. |
-| Frame | Theme, reusable asset, name, JSON layout configuration, limited-edition flag, status, sort order. |
-| Filter | Name, unique internal key, validated JSON configuration, optional preview asset, status, sort order. |
-| PoseGuide | Optional theme and asset, title, short instruction, status, sort order. |
-| ShareLink | SHA-256 token hash (never the raw token), private object key, MIME type, byte size, creation/expiry/deletion times, consent notice version. |
-| AdminUser | Unique normalized email, EDITOR/ADMINISTRATOR role, creation and last-login timestamps. |
+| Model     | Purpose and key fields                                                                                                                                                                                                            |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Theme     | name, unique slug, description, optional thumbnail asset, optional start/end dates, DRAFT/SCHEDULED/PUBLISHED/ARCHIVED, timestamps.                                                                                               |
+| Asset     | Optional theme, FRAME/STICKER/THUMBNAIL/POSE_ILLUSTRATION, storage key, MIME type, dimensions, byte size, required alt text, required license note, sort order, status. The database stores a storage reference, not binary data. |
+| Frame     | Theme, reusable asset, name, JSON layout configuration, limited-edition flag, status, sort order.                                                                                                                                 |
+| Filter    | Name, unique internal key, validated JSON configuration, optional preview asset, status, sort order.                                                                                                                              |
+| PoseGuide | Optional theme and asset, title, short instruction, status, sort order.                                                                                                                                                           |
+| ShareLink | SHA-256 token hash (never the raw token), private object key, MIME type, byte size, creation/expiry/deletion times, consent notice version.                                                                                       |
+| AdminUser | Unique normalized email, EDITOR/ADMINISTRATOR role, creation and last-login timestamps.                                                                                                                                           |
 
 Indexes support theme slug/status scheduling, asset theme/type/status, catalog ordering, unique filter keys, unique object keys, unique token hashes, expiry cleanup, and admin email lookup. Admin emails are normalized to lowercase before they are written so the unique constraint is case-insensitive in application behavior. Catalog JSON is untrusted input: the API must validate layout/filter config against closed schemas before persistence or rendering. Theme publication must check both status and any configured publication window.
 

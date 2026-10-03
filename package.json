@@ -5,18 +5,20 @@
   "type": "module",
   "packageManager": "pnpm@12.8.2",
   "engines": {
-    "node": ">=24.11.0",
+    "node": ">=24.11.0 <25.0.0",
     "pnpm": ">=12.8.2"
   },
   "scripts": {
-    "dev": "pnpm --filter @photobooth/contracts build && pnpm --filter @photobooth/db build && pnpm --parallel --filter @photobooth/web --filter @photobooth/api dev",
-    "build": "pnpm --filter @photobooth/contracts build && pnpm --filter @photobooth/db build && pnpm --parallel --filter @photobooth/web --filter @photobooth/api build",
-    "typecheck": "pnpm --filter @photobooth/contracts build && pnpm --filter @photobooth/db typecheck && pnpm --parallel --filter @photobooth/web --filter @photobooth/api typecheck",
-    "db:generate": "pnpm --filter @photobooth/db db:generate",
-    "db:migrate": "pnpm --filter @photobooth/db db:migrate",
-    "db:studio": "pnpm --filter @photobooth/db db:studio",
-    "format": "prettier --write \"apps/**/*.{ts,tsx,css,json}\" \"packages/**/*.{ts,json,prisma}\" \"*.{json,yaml,yml,md}\"",
-    "format:check": "prettier --check \"apps/**/*.{ts,tsx,css,json}\" \"packages/**/*.{ts,json,prisma}\" \"*.{json,yaml,yml,md}\""
+    "dev": "corepack pnpm --filter @photobooth/contracts build && corepack pnpm --filter @photobooth/db build && corepack pnpm --parallel --filter @photobooth/web --filter @photobooth/api dev",
+    "build": "corepack pnpm --filter @photobooth/contracts build && corepack pnpm --filter @photobooth/db build && corepack pnpm --parallel --filter @photobooth/web --filter @photobooth/api build",
+    "typecheck": "corepack pnpm --filter @photobooth/contracts build && corepack pnpm --filter @photobooth/db typecheck && corepack pnpm --parallel --filter @photobooth/web --filter @photobooth/api typecheck",
+    "test": "corepack pnpm --filter @photobooth/api test && corepack pnpm --filter @photobooth/web test",
+    "db:generate": "corepack pnpm --filter @photobooth/db db:generate",
+    "db:migrate": "corepack pnpm --filter @photobooth/db db:migrate",
+    "db:studio": "corepack pnpm --filter @photobooth/db db:studio",
+    "cleanup:shares": "corepack pnpm --filter @photobooth/api cleanup:shares",
+    "format": "prettier --write \"apps/**/*.{ts,tsx,css,json}\" \"packages/**/*.{ts,json}\" \"docs/**/*.md\" \"*.{json,md}\"",
+    "format:check": "prettier --check \"apps/**/*.{ts,tsx,css,json}\" \"packages/**/*.{ts,json}\" \"docs/**/*.md\" \"*.{json,md}\""
   },
   "devDependencies": {
     "prettier": "3.9.9"

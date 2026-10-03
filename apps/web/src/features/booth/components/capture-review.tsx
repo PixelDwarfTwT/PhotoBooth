@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { CapturedPhoto } from "../types.js";
+import type { CapturedPhoto } from "../types";
 import styles from "./booth-session.module.css";
 
 interface CaptureReviewProps {
@@ -54,7 +54,10 @@ export function CaptureReview({
   const incomplete = photos.length < targetCount;
 
   return (
-    <section className={styles.captureReview} aria-labelledby="capture-review-title">
+    <section
+      className={styles.captureReview}
+      aria-labelledby="capture-review-title"
+    >
       <div className={styles.reviewHeading}>
         <div>
           <p className={styles.eyebrow}>Sesi fotomu</p>
@@ -130,7 +133,8 @@ export function CaptureReview({
         </div>
       ) : (
         <p className={styles.reviewReady}>
-          Urutan foto sudah siap. Kamu bisa mengulang satu foto atau lanjut ke editor.
+          Urutan foto sudah siap. Kamu bisa mengulang satu foto atau lanjut ke
+          editor.
         </p>
       )}
     </section>

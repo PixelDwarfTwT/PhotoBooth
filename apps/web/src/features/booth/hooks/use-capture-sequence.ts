@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { capturePhoto } from "../lib/capture-photo.js";
-import type { CapturedPhoto, CapturePhase } from "../types.js";
+import { capturePhoto } from "../lib/capture-photo";
+import type { CapturedPhoto, CapturePhase } from "../types";
 
 export interface CaptureSequenceController {
   photos: CapturedPhoto[];
@@ -71,7 +71,9 @@ function waitOneSecond(signal: AbortSignal): Promise<void> {
 export function useCaptureSequence(): CaptureSequenceController {
   const [photos, setPhotos] = useState<CapturedPhoto[]>([]);
   const [phase, setPhase] = useState<CapturePhase>("idle");
-  const [currentPhotoIndex, setCurrentPhotoIndex] = useState<number | null>(null);
+  const [currentPhotoIndex, setCurrentPhotoIndex] = useState<number | null>(
+    null,
+  );
   const [countdownValue, setCountdownValue] = useState<number | null>(null);
   const [announcement, setAnnouncement] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -134,7 +136,9 @@ export function useCaptureSequence(): CaptureSequenceController {
             : "Foto tidak dapat diambil. Coba lagi.",
         );
         setPhase("error");
-        setAnnouncement("Pengambilan foto terhenti. Foto yang sudah diambil tetap tersedia.");
+        setAnnouncement(
+          "Pengambilan foto terhenti. Foto yang sudah diambil tetap tersedia.",
+        );
         return false;
       }
     },
@@ -142,7 +146,11 @@ export function useCaptureSequence(): CaptureSequenceController {
   );
 
   const startSequence = useCallback(
-    async (video: HTMLVideoElement, count: number, seconds: number): Promise<boolean> => {
+    async (
+      video: HTMLVideoElement,
+      count: number,
+      seconds: number,
+    ): Promise<boolean> => {
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
@@ -155,7 +163,11 @@ export function useCaptureSequence(): CaptureSequenceController {
   );
 
   const resumeSequence = useCallback(
-    async (video: HTMLVideoElement, count: number, seconds: number): Promise<boolean> => {
+    async (
+      video: HTMLVideoElement,
+      count: number,
+      seconds: number,
+    ): Promise<boolean> => {
       const startIndex = photosRef.current.length;
       if (startIndex >= count) {
         setPhase("complete");
@@ -173,7 +185,11 @@ export function useCaptureSequence(): CaptureSequenceController {
   );
 
   const retakePhoto = useCallback(
-    async (video: HTMLVideoElement, index: number, seconds: number): Promise<boolean> => {
+    async (
+      video: HTMLVideoElement,
+      index: number,
+      seconds: number,
+    ): Promise<boolean> => {
       if (!photosRef.current[index]) return false;
 
       abortRef.current?.abort();

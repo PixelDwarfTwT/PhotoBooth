@@ -23,8 +23,7 @@ body {
   margin: 0;
   background: var(--cream);
   color: var(--ink);
-  font-family:
-    ui-rounded, "Avenir Next", Avenir, "Segoe UI", sans-serif;
+  font-family: ui-rounded, "Avenir Next", Avenir, "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -35,6 +34,13 @@ a {
 a:focus-visible {
   outline: 3px solid var(--pink-dark);
   outline-offset: 4px;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 3px solid var(--pink-dark);
+  outline-offset: 3px;
 }
 
 .site-header,
@@ -48,6 +54,8 @@ a:focus-visible {
 
 .site-header {
   min-height: 76px;
+  flex-wrap: wrap;
+  padding-block: 10px;
 }
 
 .wordmark {
@@ -74,13 +82,16 @@ a:focus-visible {
 
 .site-header nav {
   display: flex;
-  gap: 18px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px 14px;
   color: var(--muted);
-  font-size: 0.82rem;
+  font-size: 0.78rem;
 }
 
 .site-header nav a {
   text-decoration: none;
+  text-underline-offset: 3px;
 }
 
 .site-header nav a:hover {
@@ -131,6 +142,13 @@ p {
   line-height: 1.7;
 }
 
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
 .primary-link {
   display: inline-flex;
   align-items: center;
@@ -143,6 +161,24 @@ p {
   font-weight: 750;
   text-decoration: none;
   transition: background-color 150ms ease;
+}
+
+.secondary-home-link {
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+  padding: 0 16px;
+  border: 1px solid #dfcbd7;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 78%);
+  color: #50394b;
+  font-size: 0.88rem;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.secondary-home-link:hover {
+  background: #fff2f7;
 }
 
 .primary-link:hover {
@@ -324,12 +360,21 @@ p {
   font-size: clamp(1.45rem, 6vw, 2.15rem);
 }
 
-.privacy-section div > p:last-child {
+.privacy-section div > p:not(.eyebrow) {
   max-width: 650px;
   margin-bottom: 0;
   color: var(--muted);
   font-size: 0.93rem;
   line-height: 1.7;
+}
+
+.privacy-link {
+  display: inline-block;
+  margin-top: 11px;
+  color: #8e3458;
+  font-size: 0.84rem;
+  font-weight: 750;
+  text-underline-offset: 3px;
 }
 
 .site-footer {
@@ -354,7 +399,7 @@ p {
   }
 
   .site-header nav {
-    gap: 28px;
+    gap: 12px 23px;
     font-size: 0.9rem;
   }
 

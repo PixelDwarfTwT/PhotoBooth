@@ -25,11 +25,7 @@ export interface CapturedPhoto {
 }
 
 export type CapturePhase =
-  | "idle"
-  | "countdown"
-  | "capturing"
-  | "complete"
-  | "error";
+  "idle" | "countdown" | "capturing" | "complete" | "error";
 
 export type BoothLayout = "strip" | "grid";
 

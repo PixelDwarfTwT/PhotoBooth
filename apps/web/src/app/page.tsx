@@ -1,3 +1,6 @@
+import Link from "next/link";
+import { SiteFooter, SiteHeader } from "@/components/site-navigation";
+
 const steps = [
   {
     number: "01",
@@ -6,32 +9,21 @@ const steps = [
   },
   {
     number: "02",
-    title: "Ambil foto berurutan",
-    description: "Empat foto dan timer tiga detik sudah dipilih secara default.",
+    title: "Ambil pose berurutan",
+    description:
+      "Empat foto dan hitung mundur tiga detik menjadi pilihan awal.",
   },
   {
     number: "03",
     title: "Hias dan simpan",
-    description: "Atur strip, filter, dan stiker lalu unduh ke perangkat.",
+    description: "Pilih bingkai, tata letak, filter, dan stiker lalu ekspor.",
   },
 ];
 
 export default function HomePage() {
   return (
     <>
-      <header className="site-header">
-        <a className="wordmark" href="/" aria-label="Web Photobooth, beranda">
-          <span className="wordmark-mark" aria-hidden="true">
-            ✳
-          </span>
-          <span>photo booth</span>
-        </a>
-        <nav aria-label="Navigasi utama">
-          <a href="#cara-kerja">Cara kerja</a>
-          <a href="#privasi">Privasi</a>
-        </nav>
-      </header>
-
+      <SiteHeader />
       <main>
         <section className="hero" aria-labelledby="hero-title">
           <div className="hero-copy">
@@ -42,14 +34,20 @@ export default function HomePage() {
               Satu strip foto.
             </h1>
             <p className="hero-description">
-              Bikin foto seru bareng teman, langsung dari browser. Tanpa akun,
-              tanpa aplikasi tambahan.
+              Bikin foto seru bareng teman, langsung dari browser. Tanpa akun
+              dan tanpa aplikasi tambahan.
             </p>
-            <a className="primary-link" href="/booth">
-              Mulai sesi foto
-              <span aria-hidden="true">→</span>
-            </a>
-            <p className="hero-note">Kamera hanya aktif setelah kamu mulai.</p>
+            <div className="hero-actions">
+              <Link className="primary-link" href="/booth">
+                Mulai sesi foto <span aria-hidden="true">→</span>
+              </Link>
+              <Link className="secondary-home-link" href="/themes">
+                Jelajahi tema
+              </Link>
+            </div>
+            <p className="hero-note">
+              Kamera hanya aktif setelah kamu menekan tombol mulai.
+            </p>
           </div>
 
           <div className="preview-card" aria-hidden="true">
@@ -106,28 +104,23 @@ export default function HomePage() {
           aria-labelledby="privacy-title"
         >
           <span className="privacy-icon" aria-hidden="true">
-            ◌
+            ◉
           </span>
           <div>
             <p className="eyebrow">Privasi dari awal</p>
             <h2 id="privacy-title">Foto tetap di perangkatmu.</h2>
             <p>
-              Pemotretan, penyusunan, dan unduhan dilakukan di browser. Foto
-              tidak diunggah; fitur penyimpanan cloud belum tersedia.
+              Memotret, mengedit, dan mengunduh dilakukan di browser. Tautan
+              cloud bersifat opsional dan hanya mengirim hasil akhir setelah
+              kamu memberikan persetujuan.
             </p>
+            <Link className="privacy-link" href="/privacy">
+              Baca cara kerja privasi
+            </Link>
           </div>
         </section>
       </main>
-
-      <footer className="site-footer">
-        <a className="wordmark" href="/" aria-label="Web Photobooth, beranda">
-          <span className="wordmark-mark" aria-hidden="true">
-            ✳
-          </span>
-          <span>photo booth</span>
-        </a>
-        <p>Kenangan kecil, dibuat bersama.</p>
-      </footer>
+      <SiteFooter />
     </>
   );
 }

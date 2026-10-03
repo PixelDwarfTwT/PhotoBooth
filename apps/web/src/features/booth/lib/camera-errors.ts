@@ -1,4 +1,4 @@
-import type { CameraIssue, CameraIssueCode } from "../types.js";
+import type { CameraIssue, CameraIssueCode } from "../types";
 
 const CAMERA_MESSAGES: Record<CameraIssueCode, string> = {
   "insecure-context":
@@ -7,7 +7,8 @@ const CAMERA_MESSAGES: Record<CameraIssueCode, string> = {
     "Browser ini belum mendukung akses kamera. Coba gunakan versi terbaru Chrome, Safari, Firefox, atau Edge.",
   "permission-denied":
     "Izin kamera belum diberikan. Ubah izin situs di pengaturan browser, lalu coba lagi.",
-  "no-camera": "Kami tidak menemukan kamera yang dapat digunakan di perangkat ini.",
+  "no-camera":
+    "Kami tidak menemukan kamera yang dapat digunakan di perangkat ini.",
   "camera-busy":
     "Kamera sedang digunakan aplikasi lain. Tutup aplikasi tersebut, lalu coba lagi.",
   "device-unavailable":

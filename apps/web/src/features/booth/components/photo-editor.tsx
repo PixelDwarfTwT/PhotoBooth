@@ -1,17 +1,29 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { BoothFilter, BoothLayout, CapturedPhoto, StickerPlacement } from "../types.js";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type {
+  BoothFilter,
+  BoothLayout,
+  CapturedPhoto,
+  StickerPlacement,
+} from "../types";
 import {
   BOOTH_FILTERS,
   BOOTH_LAYOUTS,
+  DEFAULT_FILTER_OPTIONS,
+  LOCAL_FRAMES,
   DEFAULT_STICKER_SIZE,
   MAX_STICKER_SIZE,
   MIN_STICKER_SIZE,
   STICKER_SYMBOLS,
-} from "../lib/editor-options.js";
-import { canvasToBlob, renderComposition } from "../lib/canvas-compositor.js";
-import { StickerLayer } from "./sticker-layer.js";
+  getFrameLayouts,
+} from "../lib/editor-options";
+import { API_ORIGIN } from "@/lib/api-origin";
+import { readFilterCatalog, readFrameCatalog } from "../lib/catalog-client";
+import { canvasToBlob, renderComposition } from "../lib/canvas-compositor";
+import { createLoopGif, recordPhotoLoop } from "../lib/motion-export";
+import { StickerLayer } from "./sticker-layer";
+import { ShareControls } from "./share-controls";
 import styles from "./booth-session.module.css";
 
 interface PhotoEditorProps {
@@ -19,6 +31,7 @@ interface PhotoEditorProps {
   mirror: boolean;
   filter: BoothFilter;
   onFilterChange: (filter: BoothFilter) => void;
+  onFilterIntensityChange: (intensity: number) => void;
   onNewSession: () => void;
 }
 
@@ -34,15 +47,28 @@ export function PhotoEditor({
   mirror,
   filter,
   onFilterChange,
+  onFilterIntensityChange,
   onNewSession,
 }: PhotoEditorProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const renderIdRef = useRef(0);
   const activeExportUrlRef = useRef<string | null>(null);
   const mountedRef = useRef(false);
+  const motionAbortRef = useRef<AbortController | null>(null);
   const [layout, setLayout] = useState<BoothLayout>("strip");
+  const [frames, setFrames] = useState([...LOCAL_FRAMES]);
+  const [selectedFrameId, setSelectedFrameId] = useState(LOCAL_FRAMES[0]!.id);
+  const [filterOptions, setFilterOptions] = useState([
+    ...DEFAULT_FILTER_OPTIONS,
+  ]);
+  const [filterStrength, setFilterStrength] = useState(1);
+  const [catalogNotice, setCatalogNotice] = useState("");
+  const [removeFrameBackground, setRemoveFrameBackground] = useState(true);
+  const [frameBackgroundNotice, setFrameBackgroundNotice] = useState("");
   const [stickers, setStickers] = useState<StickerPlacement[]>([]);
-  const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
+  const [selectedStickerId, setSelectedStickerId] = useState<string | null>(
+    null,
+  );
   const [isRendering, setIsRendering] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
   const [renderAttempt, setRenderAttempt] = useState(0);
@@ -50,6 +76,66 @@ export function PhotoEditor({
   const [renderError, setRenderError] = useState<string | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
   const [exportMessage, setExportMessage] = useState("");
+  const activeFrame =
+    frames.find((frame) => frame.id === selectedFrameId) ?? frames[0]!;
+  const frameLayouts = useMemo(
+    () => getFrameLayouts(activeFrame.layoutConfig),
+    [activeFrame.layoutConfig],
+  );
+  const activeFilter =
+    filterOptions.find((option) => option.key === filter) ??
+    DEFAULT_FILTER_OPTIONS.find((option) => option.key === filter) ??
+    DEFAULT_FILTER_OPTIONS[0]!;
+
+  useEffect(() => {
+    if (!API_ORIGIN) return;
+    const controller = new AbortController();
+
+    void Promise.all([
+      fetch(`${API_ORIGIN}/api/frames`, { signal: controller.signal }),
+      fetch(`${API_ORIGIN}/api/filters`, { signal: controller.signal }),
+    ])
+      .then(async ([framesResponse, filtersResponse]) => {
+        if (!framesResponse.ok || !filtersResponse.ok) {
+          throw new Error("Katalog online belum tersedia.");
+        }
+        return [
+          await framesResponse.json(),
+          await filtersResponse.json(),
+        ] as const;
+      })
+      .then(([framePayload, filterPayload]) => {
+        const remoteFrames = readFrameCatalog(framePayload);
+        const remoteFilters = readFilterCatalog(filterPayload);
+        if (remoteFrames.length) setFrames([...LOCAL_FRAMES, ...remoteFrames]);
+        if (remoteFilters.length) setFilterOptions(remoteFilters);
+        setCatalogNotice("");
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setCatalogNotice(
+            "Katalog online belum terjangkau; preset lokal tetap tersedia.",
+          );
+        }
+      });
+
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    if (!frameLayouts.includes(layout)) setLayout(frameLayouts[0] ?? "strip");
+  }, [frameLayouts, layout]);
+
+  useEffect(() => {
+    if (filterOptions.some((option) => option.key === filter)) return;
+    const firstFilter = filterOptions[0];
+    if (firstFilter) onFilterChange(firstFilter.key);
+  }, [filter, filterOptions, onFilterChange]);
+
+  useEffect(() => {
+    setFilterStrength(activeFilter.intensity);
+    onFilterIntensityChange(activeFilter.intensity);
+  }, [activeFilter.key, activeFilter.intensity, onFilterIntensityChange]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -59,13 +145,27 @@ export function PhotoEditor({
     renderIdRef.current = renderId;
     setIsRendering(true);
     setRenderError(null);
+    setFrameBackgroundNotice("");
 
     void renderComposition(canvas, {
       photos,
-      layout,
+      layout: frameLayouts.includes(layout)
+        ? layout
+        : (frameLayouts[0] ?? "strip"),
       filter,
+      filterIntensity: filterStrength,
       mirror,
       stickers,
+      frame: activeFrame.layoutConfig,
+      frameAssetUrl: activeFrame.assetUrl,
+      removeFrameBackground,
+      onFrameBackgroundRemovalFailure: () => {
+        if (renderIdRef.current === renderId) {
+          setFrameBackgroundNotice(
+            "Latar template tidak dikenali. Asset gambar dilewati agar foto tetap terlihat; gunakan PNG frame transparan untuk hasil terbaik.",
+          );
+        }
+      },
       isCurrent: () => renderIdRef.current === renderId,
     })
       .then((filterApplied) => {
@@ -86,12 +186,25 @@ export function PhotoEditor({
     return () => {
       if (renderIdRef.current === renderId) renderIdRef.current += 1;
     };
-  }, [filter, layout, mirror, photos, stickers, renderAttempt]);
+  }, [
+    activeFrame.assetUrl,
+    activeFrame.layoutConfig,
+    filter,
+    filterStrength,
+    frameLayouts,
+    layout,
+    mirror,
+    photos,
+    removeFrameBackground,
+    stickers,
+    renderAttempt,
+  ]);
 
   useEffect(() => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      motionAbortRef.current?.abort();
       if (activeExportUrlRef.current) {
         URL.revokeObjectURL(activeExportUrlRef.current);
       }
@@ -100,7 +213,9 @@ export function PhotoEditor({
 
   const moveSticker = useCallback((id: string, x: number, y: number) => {
     setStickers((current) =>
-      current.map((sticker) => (sticker.id === id ? { ...sticker, x, y } : sticker)),
+      current.map((sticker) =>
+        sticker.id === id ? { ...sticker, x, y } : sticker,
+      ),
     );
   }, []);
 
@@ -161,7 +276,9 @@ export function PhotoEditor({
       document.body.append(anchor);
       anchor.click();
       anchor.remove();
-      setExportMessage(`Unduhan ${format.toUpperCase()} dimulai. Foto tetap tersimpan di sesi browser ini.`);
+      setExportMessage(
+        `Unduhan ${format.toUpperCase()} dimulai. Foto tetap tersimpan di sesi browser ini.`,
+      );
     } catch (error) {
       if (!mountedRef.current) return;
       setExportError(
@@ -170,6 +287,55 @@ export function PhotoEditor({
           : "Gambar gagal diekspor. Foto dan editor tetap tersedia untuk dicoba lagi.",
       );
     } finally {
+      if (mountedRef.current) setIsExporting(false);
+    }
+  }
+
+  async function exportMotion(format: "gif" | "video") {
+    const canvas = canvasRef.current;
+    if (!canvas || isRendering || isExporting) return;
+
+    const abortController = new AbortController();
+    motionAbortRef.current = abortController;
+    setIsExporting(true);
+    setExportMessage(
+      format === "gif"
+        ? "Membuat GIF loop di perangkat…"
+        : "Merekam klip loop di perangkat…",
+    );
+    setExportError(null);
+    try {
+      const blob =
+        format === "gif"
+          ? await createLoopGif(canvas)
+          : await recordPhotoLoop(canvas, { signal: abortController.signal });
+      if (!mountedRef.current || abortController.signal.aborted) return;
+      const downloadUrl = URL.createObjectURL(blob);
+      if (activeExportUrlRef.current)
+        URL.revokeObjectURL(activeExportUrlRef.current);
+      activeExportUrlRef.current = downloadUrl;
+      const extension =
+        format === "gif" ? "gif" : blob.type.includes("mp4") ? "mp4" : "webm";
+      const anchor = document.createElement("a");
+      anchor.href = downloadUrl;
+      anchor.download = `photo-booth-loop-${new Date().toISOString().slice(0, 10)}.${extension}`;
+      anchor.style.display = "none";
+      document.body.append(anchor);
+      anchor.click();
+      anchor.remove();
+      setExportMessage(
+        `Unduhan ${extension.toUpperCase()} dimulai. Klip dibuat di perangkat ini.`,
+      );
+    } catch (error) {
+      if (!mountedRef.current) return;
+      setExportError(
+        error instanceof Error
+          ? error.message
+          : "Klip loop gagal dibuat. PNG dan JPG tetap tersedia.",
+      );
+      setExportMessage("");
+    } finally {
+      motionAbortRef.current = null;
       if (mountedRef.current) setIsExporting(false);
     }
   }
@@ -188,7 +354,9 @@ export function PhotoEditor({
       <fieldset className={styles.editorGroup}>
         <legend>Tata letak</legend>
         <div className={styles.optionRow}>
-          {BOOTH_LAYOUTS.map((option) => (
+          {BOOTH_LAYOUTS.filter((option) =>
+            frameLayouts.includes(option.key),
+          ).map((option) => (
             <button
               className={
                 layout === option.key
@@ -210,9 +378,67 @@ export function PhotoEditor({
       </fieldset>
 
       <fieldset className={styles.editorGroup}>
+        <legend>Bingkai foto</legend>
+        <div className={styles.frameOptions}>
+          {frames.map((frame) => (
+            <button
+              className={
+                selectedFrameId === frame.id
+                  ? `${styles.frameOption} ${styles.frameOptionSelected}`
+                  : styles.frameOption
+              }
+              type="button"
+              key={frame.id}
+              aria-pressed={selectedFrameId === frame.id}
+              onClick={() => setSelectedFrameId(frame.id)}
+            >
+              <span
+                className={styles.frameSwatch}
+                aria-hidden="true"
+                style={{
+                  background: frame.layoutConfig.backgroundColor,
+                  borderColor: frame.layoutConfig.borderColor,
+                }}
+              />
+              {frame.name}
+            </button>
+          ))}
+        </div>
+        {catalogNotice ? (
+          <p className={styles.controlHint} role="status">
+            {catalogNotice}
+          </p>
+        ) : null}
+        {activeFrame.assetUrl ? (
+          <div className={styles.frameBackgroundControl}>
+            <label className={styles.frameBackgroundToggle}>
+              <input
+                type="checkbox"
+                checked={removeFrameBackground}
+                onChange={(event) =>
+                  setRemoveFrameBackground(event.currentTarget.checked)
+                }
+              />
+              Hapus latar terang otomatis
+            </label>
+            <p className={styles.controlHint}>
+              Pola kotak-kotak di frame dibersihkan di browser. Foto tidak
+              diunggah; matikan opsi ini jika ada detail terang yang ikut
+              hilang.
+            </p>
+          </div>
+        ) : null}
+        {frameBackgroundNotice ? (
+          <p className={styles.fallbackNotice} role="status">
+            {frameBackgroundNotice}
+          </p>
+        ) : null}
+      </fieldset>
+
+      <fieldset className={styles.editorGroup}>
         <legend>Filter foto</legend>
         <div className={styles.optionRow}>
-          {BOOTH_FILTERS.map((option) => (
+          {filterOptions.map((option) => (
             <button
               className={
                 filter === option.key
@@ -222,12 +448,37 @@ export function PhotoEditor({
               type="button"
               key={option.key}
               aria-pressed={filter === option.key}
-              onClick={() => onFilterChange(option.key)}
+              onClick={() => {
+                onFilterChange(option.key);
+                setFilterStrength(option.intensity);
+                onFilterIntensityChange(option.intensity);
+              }}
             >
               {option.label}
             </button>
           ))}
         </div>
+        <label className={styles.rangeField} htmlFor="photo-filter-strength">
+          <span>
+            Intensitas filter{" "}
+            <strong>{Math.round(filterStrength * 100)}%</strong>
+          </span>
+          <input
+            id="photo-filter-strength"
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+            value={filterStrength}
+            disabled={filter === "natural"}
+            aria-valuetext={`${Math.round(filterStrength * 100)} persen`}
+            onChange={(event) => {
+              const nextStrength = Number(event.currentTarget.value);
+              setFilterStrength(nextStrength);
+              onFilterIntensityChange(nextStrength);
+            }}
+          />
+        </label>
       </fieldset>
 
       <div className={styles.canvasArea}>
@@ -256,7 +507,8 @@ export function PhotoEditor({
 
       {filterFallback ? (
         <p className={styles.fallbackNotice} role="status">
-          Browser ini belum mendukung filter Canvas. Pratinjau tanpa filter; kamu tetap bisa menambahkan stiker dan menyimpan hasilnya.
+          Browser ini belum mendukung filter Canvas. Pratinjau tanpa filter;
+          kamu tetap bisa menambahkan stiker dan menyimpan hasilnya.
           <button type="button" onClick={() => onFilterChange("natural")}>
             Gunakan natural
           </button>
@@ -282,8 +534,8 @@ export function PhotoEditor({
         <legend>Stiker dekoratif</legend>
         <p className={styles.controlHint}>
           Seret stiker pada photo strip. Dengan keyboard: tombol panah untuk
-          memindahkan, Shift + panah untuk langkah lebih besar, +/− untuk ukuran,
-          dan Delete untuk menghapus.
+          memindahkan, Shift + panah untuk langkah lebih besar, +/− untuk
+          ukuran, dan Delete untuk menghapus.
         </p>
         <div className={styles.stickerPalette}>
           {STICKER_SYMBOLS.map((symbol) => (
@@ -332,6 +584,32 @@ export function PhotoEditor({
             Unduh JPG
           </button>
         </div>
+        <div className={styles.motionActions}>
+          <button
+            className={styles.secondaryButton}
+            type="button"
+            onClick={() => void exportMotion("gif")}
+            disabled={isRendering || isExporting || Boolean(renderError)}
+          >
+            {isExporting && exportMessage.startsWith("Membuat GIF")
+              ? "Membuat GIF…"
+              : "Unduh GIF loop"}
+          </button>
+          <button
+            className={styles.secondaryButton}
+            type="button"
+            onClick={() => void exportMotion("video")}
+            disabled={isRendering || isExporting || Boolean(renderError)}
+          >
+            {isExporting && exportMessage.startsWith("Merekam")
+              ? "Merekam klip…"
+              : "Unduh klip loop"}
+          </button>
+        </div>
+        <ShareControls
+          canvasRef={canvasRef}
+          disabled={isRendering || isExporting || Boolean(renderError)}
+        />
       </div>
       {exportError ? (
         <p className={styles.errorMessage} role="alert">
@@ -343,7 +621,11 @@ export function PhotoEditor({
           {exportMessage}
         </p>
       ) : null}
-      <button className={styles.textButton} type="button" onClick={onNewSession}>
+      <button
+        className={styles.textButton}
+        type="button"
+        onClick={onNewSession}
+      >
         Mulai sesi foto baru
       </button>
     </section>

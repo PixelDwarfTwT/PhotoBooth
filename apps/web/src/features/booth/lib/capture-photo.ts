@@ -1,4 +1,4 @@
-import type { CapturedPhoto } from "../types.js";
+import type { CapturedPhoto } from "../types";
 
 const MAX_CAPTURE_DIMENSION = 1600;
 let fallbackId = 0;
@@ -30,9 +30,16 @@ function canvasToJpeg(canvas: HTMLCanvasElement): Promise<Blob> {
   });
 }
 
-export async function capturePhoto(video: HTMLVideoElement): Promise<CapturedPhoto> {
-  if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA || video.videoWidth < 1) {
-    throw new Error("Pratinjau kamera belum siap. Tunggu sebentar lalu coba lagi.");
+export async function capturePhoto(
+  video: HTMLVideoElement,
+): Promise<CapturedPhoto> {
+  if (
+    video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA ||
+    video.videoWidth < 1
+  ) {
+    throw new Error(
+      "Pratinjau kamera belum siap. Tunggu sebentar lalu coba lagi.",
+    );
   }
 
   const sourceWidth = video.videoWidth;

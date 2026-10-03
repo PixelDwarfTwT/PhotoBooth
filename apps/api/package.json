@@ -7,16 +7,25 @@
     "dev": "tsx watch src/main.ts",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "start": "node dist/main.js"
+    "start": "node dist/main.js",
+    "admin:create-token": "tsx src/scripts/create-admin-token.ts",
+    "cleanup:shares": "tsx src/scripts/cleanup-shares.ts",
+    "test": "corepack pnpm --filter @photobooth/contracts build && corepack pnpm --filter @photobooth/db build && corepack pnpm build && tsx --test test/*.test.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1144.0",
+    "@fastify/cors": "^11.3.0",
+    "@fastify/rate-limit": "^11.2.0",
     "@photobooth/contracts": "workspace:*",
+    "@photobooth/db": "workspace:*",
     "dotenv": "^16.4.7",
     "fastify": "5.12.5",
+    "qrcode": "^1.5.4",
     "zod": "4.6.5"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
+    "@types/qrcode": "^1.5.6",
     "tsx": "4.23.15",
     "typescript": "5.9.3"
   }

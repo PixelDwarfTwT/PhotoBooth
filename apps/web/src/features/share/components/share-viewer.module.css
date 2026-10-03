@@ -1,0 +1,165 @@
+.page {
+  display: grid;
+  min-height: 100vh;
+  min-height: 100svh;
+  grid-template-rows: auto 1fr;
+  gap: 22px;
+  padding: 0 18px 44px;
+  background:
+    radial-gradient(
+      ellipse at 90% 6%,
+      rgb(255 225 236 / 65%),
+      transparent 24rem
+    ),
+    #fffaf7;
+  color: #34283b;
+}
+
+.header {
+  display: flex;
+  width: min(100%, 960px);
+  min-height: 72px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-inline: auto;
+}
+
+.wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: inherit;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.header p {
+  margin: 0;
+  color: #756a79;
+  font-size: 0.76rem;
+}
+
+.card {
+  display: grid;
+  width: min(100%, 680px);
+  align-content: start;
+  gap: 14px;
+  justify-self: center;
+  padding: 21px;
+  border: 1px solid #ecdee6;
+  border-radius: 23px;
+  background: rgb(255 255 255 / 95%);
+  box-shadow: 0 14px 38px rgb(76 46 67 / 7%);
+}
+
+.eyebrow {
+  margin: 0;
+  color: #bf3d6b;
+  font-size: 0.71rem;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.card h1 {
+  margin: -6px 0 2px;
+  font-size: clamp(1.8rem, 8vw, 2.6rem);
+  letter-spacing: -0.06em;
+}
+
+.photo {
+  display: block;
+  width: 100%;
+  max-height: 72svh;
+  border: 1px solid #eddee6;
+  border-radius: 11px;
+  background: #fff;
+  object-fit: contain;
+}
+
+.expiry,
+.privacy,
+.status {
+  margin: 0;
+  color: #756a79;
+  font-size: 0.79rem;
+  line-height: 1.6;
+}
+
+.actions {
+  display: grid;
+  gap: 9px;
+}
+
+.primaryButton,
+.secondaryButton {
+  display: inline-flex;
+  min-height: 46px;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 15px;
+  border: 1px solid #bf3d6b;
+  border-radius: 999px;
+  background: #bf3d6b;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.83rem;
+  font-weight: 750;
+  text-align: center;
+  text-decoration: none;
+}
+
+.secondaryButton {
+  border-color: #dfcbd7;
+  background: #fff;
+  color: #50394b;
+}
+
+.primaryButton:focus-visible,
+.secondaryButton:focus-visible,
+.wordmark:focus-visible {
+  outline: 3px solid #34283b;
+  outline-offset: 3px;
+}
+
+.error {
+  padding: 14px;
+  border: 1px solid #efbbc2;
+  border-radius: 13px;
+  background: #fff0f1;
+  color: #842f3b;
+}
+
+.error p {
+  margin: 0 0 7px;
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
+.error a {
+  color: #842f3b;
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.privacy {
+  padding-top: 11px;
+  border-top: 1px solid #eee3e9;
+  font-size: 0.72rem;
+}
+
+@media (min-width: 600px) {
+  .page {
+    padding-inline: 32px;
+  }
+
+  .card {
+    padding: 30px;
+  }
+
+  .actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
