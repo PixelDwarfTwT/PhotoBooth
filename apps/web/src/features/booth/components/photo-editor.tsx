@@ -351,215 +351,227 @@ export function PhotoEditor({
         <span className={styles.photoCount}>{photos.length} foto</span>
       </div>
 
-      <fieldset className={styles.editorGroup}>
-        <legend>Tata letak</legend>
-        <div className={styles.optionRow}>
-          {BOOTH_LAYOUTS.filter((option) =>
-            frameLayouts.includes(option.key),
-          ).map((option) => (
-            <button
-              className={
-                layout === option.key
-                  ? `${styles.optionButton} ${styles.optionButtonSelected}`
-                  : styles.optionButton
-              }
-              type="button"
-              key={option.key}
-              aria-pressed={layout === option.key}
-              onClick={() => setLayout(option.key)}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-        <p className={styles.controlHint}>
-          {BOOTH_LAYOUTS.find((option) => option.key === layout)?.description}
-        </p>
-      </fieldset>
+      <div className={styles.editorWorkspace}>
+        <div className={styles.editorCanvasColumn}>
+          <div className={styles.canvasArea}>
+            {isRendering ? (
+              <p className={styles.canvasStatus} role="status">
+                Menyusun pratinjau photo strip…
+              </p>
+            ) : null}
+            <div className={styles.canvasStage} aria-busy={isRendering}>
+              <canvas
+                ref={canvasRef}
+                className={styles.compositionCanvas}
+                role="img"
+                aria-label={`Pratinjau photo strip ${layout === "strip" ? "memanjang" : "kolase"} dengan ${photos.length} foto${filter === "natural" ? "" : ` dan filter ${BOOTH_FILTERS.find((option) => option.key === filter)?.label}`}`}
+              />
+              <StickerLayer
+                stickers={stickers}
+                selectedId={selectedStickerId}
+                onSelect={setSelectedStickerId}
+                onMove={moveSticker}
+                onRemove={removeSticker}
+                onResize={resizeSticker}
+              />
+            </div>
+          </div>
 
-      <fieldset className={styles.editorGroup}>
-        <legend>Bingkai foto</legend>
-        <div className={styles.frameOptions}>
-          {frames.map((frame) => (
-            <button
-              className={
-                selectedFrameId === frame.id
-                  ? `${styles.frameOption} ${styles.frameOptionSelected}`
-                  : styles.frameOption
+          {filterFallback ? (
+            <p className={styles.fallbackNotice} role="status">
+              Browser ini belum mendukung filter Canvas. Pratinjau tanpa filter;
+              kamu tetap bisa menambahkan stiker dan menyimpan hasilnya.
+              <button type="button" onClick={() => onFilterChange("natural")}>
+                Gunakan natural
+              </button>
+            </p>
+          ) : null}
+          {renderError ? (
+            <div className={styles.errorMessage} role="alert">
+              <p>{renderError}</p>
+              <button
+                className={styles.inlineRetry}
+                type="button"
+                onClick={() => {
+                  setRenderError(null);
+                  setRenderAttempt((current) => current + 1);
+                }}
+              >
+                Susun ulang pratinjau
+              </button>
+            </div>
+          ) : null}
+        </div>
+
+        <div className={styles.editorControls}>
+          <fieldset className={styles.editorGroup}>
+            <legend>Tata letak</legend>
+            <div className={styles.optionRow}>
+              {BOOTH_LAYOUTS.filter((option) =>
+                frameLayouts.includes(option.key),
+              ).map((option) => (
+                <button
+                  className={
+                    layout === option.key
+                      ? `${styles.optionButton} ${styles.optionButtonSelected}`
+                      : styles.optionButton
+                  }
+                  type="button"
+                  key={option.key}
+                  aria-pressed={layout === option.key}
+                  onClick={() => setLayout(option.key)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            <p className={styles.controlHint}>
+              {
+                BOOTH_LAYOUTS.find((option) => option.key === layout)
+                  ?.description
               }
-              type="button"
-              key={frame.id}
-              aria-pressed={selectedFrameId === frame.id}
-              onClick={() => setSelectedFrameId(frame.id)}
+            </p>
+          </fieldset>
+
+          <fieldset className={styles.editorGroup}>
+            <legend>Bingkai foto</legend>
+            <div className={styles.frameOptions}>
+              {frames.map((frame) => (
+                <button
+                  className={
+                    selectedFrameId === frame.id
+                      ? `${styles.frameOption} ${styles.frameOptionSelected}`
+                      : styles.frameOption
+                  }
+                  type="button"
+                  key={frame.id}
+                  aria-pressed={selectedFrameId === frame.id}
+                  onClick={() => setSelectedFrameId(frame.id)}
+                >
+                  <span
+                    className={styles.frameSwatch}
+                    aria-hidden="true"
+                    style={{
+                      background: frame.layoutConfig.backgroundColor,
+                      borderColor: frame.layoutConfig.borderColor,
+                    }}
+                  />
+                  {frame.name}
+                </button>
+              ))}
+            </div>
+            {catalogNotice ? (
+              <p className={styles.controlHint} role="status">
+                {catalogNotice}
+              </p>
+            ) : null}
+            {activeFrame.assetUrl ? (
+              <div className={styles.frameBackgroundControl}>
+                <label className={styles.frameBackgroundToggle}>
+                  <input
+                    type="checkbox"
+                    checked={removeFrameBackground}
+                    onChange={(event) =>
+                      setRemoveFrameBackground(event.currentTarget.checked)
+                    }
+                  />
+                  Hapus latar terang otomatis
+                </label>
+                <p className={styles.controlHint}>
+                  Pola kotak-kotak di frame dibersihkan di browser. Foto tidak
+                  diunggah; matikan opsi ini jika ada detail terang yang ikut
+                  hilang.
+                </p>
+              </div>
+            ) : null}
+            {frameBackgroundNotice ? (
+              <p className={styles.fallbackNotice} role="status">
+                {frameBackgroundNotice}
+              </p>
+            ) : null}
+          </fieldset>
+
+          <fieldset className={styles.editorGroup}>
+            <legend>Filter foto</legend>
+            <div className={styles.optionRow}>
+              {filterOptions.map((option) => (
+                <button
+                  className={
+                    filter === option.key
+                      ? `${styles.optionButton} ${styles.optionButtonSelected}`
+                      : styles.optionButton
+                  }
+                  type="button"
+                  key={option.key}
+                  aria-pressed={filter === option.key}
+                  onClick={() => {
+                    onFilterChange(option.key);
+                    setFilterStrength(option.intensity);
+                    onFilterIntensityChange(option.intensity);
+                  }}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            <label
+              className={styles.rangeField}
+              htmlFor="photo-filter-strength"
             >
-              <span
-                className={styles.frameSwatch}
-                aria-hidden="true"
-                style={{
-                  background: frame.layoutConfig.backgroundColor,
-                  borderColor: frame.layoutConfig.borderColor,
+              <span>
+                Intensitas filter{" "}
+                <strong>{Math.round(filterStrength * 100)}%</strong>
+              </span>
+              <input
+                id="photo-filter-strength"
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={filterStrength}
+                disabled={filter === "natural"}
+                aria-valuetext={`${Math.round(filterStrength * 100)} persen`}
+                onChange={(event) => {
+                  const nextStrength = Number(event.currentTarget.value);
+                  setFilterStrength(nextStrength);
+                  onFilterIntensityChange(nextStrength);
                 }}
               />
-              {frame.name}
-            </button>
-          ))}
-        </div>
-        {catalogNotice ? (
-          <p className={styles.controlHint} role="status">
-            {catalogNotice}
-          </p>
-        ) : null}
-        {activeFrame.assetUrl ? (
-          <div className={styles.frameBackgroundControl}>
-            <label className={styles.frameBackgroundToggle}>
-              <input
-                type="checkbox"
-                checked={removeFrameBackground}
-                onChange={(event) =>
-                  setRemoveFrameBackground(event.currentTarget.checked)
-                }
-              />
-              Hapus latar terang otomatis
             </label>
+          </fieldset>
+
+          <fieldset className={styles.editorGroup}>
+            <legend>Stiker dekoratif</legend>
             <p className={styles.controlHint}>
-              Pola kotak-kotak di frame dibersihkan di browser. Foto tidak
-              diunggah; matikan opsi ini jika ada detail terang yang ikut
-              hilang.
+              Seret stiker pada photo strip. Dengan keyboard: tombol panah untuk
+              memindahkan, Shift + panah untuk langkah lebih besar, +/− untuk
+              ukuran, dan Delete untuk menghapus.
             </p>
-          </div>
-        ) : null}
-        {frameBackgroundNotice ? (
-          <p className={styles.fallbackNotice} role="status">
-            {frameBackgroundNotice}
-          </p>
-        ) : null}
-      </fieldset>
-
-      <fieldset className={styles.editorGroup}>
-        <legend>Filter foto</legend>
-        <div className={styles.optionRow}>
-          {filterOptions.map((option) => (
-            <button
-              className={
-                filter === option.key
-                  ? `${styles.optionButton} ${styles.optionButtonSelected}`
-                  : styles.optionButton
-              }
-              type="button"
-              key={option.key}
-              aria-pressed={filter === option.key}
-              onClick={() => {
-                onFilterChange(option.key);
-                setFilterStrength(option.intensity);
-                onFilterIntensityChange(option.intensity);
-              }}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-        <label className={styles.rangeField} htmlFor="photo-filter-strength">
-          <span>
-            Intensitas filter{" "}
-            <strong>{Math.round(filterStrength * 100)}%</strong>
-          </span>
-          <input
-            id="photo-filter-strength"
-            type="range"
-            min="0"
-            max="1"
-            step="0.05"
-            value={filterStrength}
-            disabled={filter === "natural"}
-            aria-valuetext={`${Math.round(filterStrength * 100)} persen`}
-            onChange={(event) => {
-              const nextStrength = Number(event.currentTarget.value);
-              setFilterStrength(nextStrength);
-              onFilterIntensityChange(nextStrength);
-            }}
-          />
-        </label>
-      </fieldset>
-
-      <div className={styles.canvasArea}>
-        {isRendering ? (
-          <p className={styles.canvasStatus} role="status">
-            Menyusun pratinjau photo strip…
-          </p>
-        ) : null}
-        <div className={styles.canvasStage} aria-busy={isRendering}>
-          <canvas
-            ref={canvasRef}
-            className={styles.compositionCanvas}
-            role="img"
-            aria-label={`Pratinjau photo strip ${layout === "strip" ? "memanjang" : "kolase"} dengan ${photos.length} foto${filter === "natural" ? "" : ` dan filter ${BOOTH_FILTERS.find((option) => option.key === filter)?.label}`}`}
-          />
-          <StickerLayer
-            stickers={stickers}
-            selectedId={selectedStickerId}
-            onSelect={setSelectedStickerId}
-            onMove={moveSticker}
-            onRemove={removeSticker}
-            onResize={resizeSticker}
-          />
+            <div className={styles.stickerPalette}>
+              {STICKER_SYMBOLS.map((symbol) => (
+                <button
+                  className={styles.stickerPaletteButton}
+                  key={symbol}
+                  type="button"
+                  onClick={() => addSticker(symbol)}
+                  aria-label={`Tambahkan stiker ${symbol}`}
+                >
+                  {symbol}
+                </button>
+              ))}
+            </div>
+            {selectedStickerId ? (
+              <button
+                className={styles.secondaryButton}
+                type="button"
+                onClick={() => removeSticker(selectedStickerId)}
+              >
+                Hapus stiker terpilih
+              </button>
+            ) : null}
+          </fieldset>
         </div>
       </div>
-
-      {filterFallback ? (
-        <p className={styles.fallbackNotice} role="status">
-          Browser ini belum mendukung filter Canvas. Pratinjau tanpa filter;
-          kamu tetap bisa menambahkan stiker dan menyimpan hasilnya.
-          <button type="button" onClick={() => onFilterChange("natural")}>
-            Gunakan natural
-          </button>
-        </p>
-      ) : null}
-      {renderError ? (
-        <div className={styles.errorMessage} role="alert">
-          <p>{renderError}</p>
-          <button
-            className={styles.inlineRetry}
-            type="button"
-            onClick={() => {
-              setRenderError(null);
-              setRenderAttempt((current) => current + 1);
-            }}
-          >
-            Susun ulang pratinjau
-          </button>
-        </div>
-      ) : null}
-
-      <fieldset className={styles.editorGroup}>
-        <legend>Stiker dekoratif</legend>
-        <p className={styles.controlHint}>
-          Seret stiker pada photo strip. Dengan keyboard: tombol panah untuk
-          memindahkan, Shift + panah untuk langkah lebih besar, +/− untuk
-          ukuran, dan Delete untuk menghapus.
-        </p>
-        <div className={styles.stickerPalette}>
-          {STICKER_SYMBOLS.map((symbol) => (
-            <button
-              className={styles.stickerPaletteButton}
-              key={symbol}
-              type="button"
-              onClick={() => addSticker(symbol)}
-              aria-label={`Tambahkan stiker ${symbol}`}
-            >
-              {symbol}
-            </button>
-          ))}
-        </div>
-        {selectedStickerId ? (
-          <button
-            className={styles.secondaryButton}
-            type="button"
-            onClick={() => removeSticker(selectedStickerId)}
-          >
-            Hapus stiker terpilih
-          </button>
-        ) : null}
-      </fieldset>
 
       <div className={styles.exportPanel}>
         <div>

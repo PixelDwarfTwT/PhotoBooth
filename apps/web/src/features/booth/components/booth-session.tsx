@@ -334,6 +334,56 @@ export function BoothSession() {
       </header>
 
       <div className={styles.content}>
+        <section className={styles.previewCard} aria-label="Pratinjau kamera">
+          <div className={styles.previewHeader}>
+            <span className={styles.previewTitle}>Pratinjau</span>
+            <span className={styles.cameraStatus} aria-live="polite">
+              <span
+                className={
+                  camera.stream
+                    ? `${styles.statusDot} ${styles.statusDotLive}`
+                    : styles.statusDot
+                }
+                aria-hidden="true"
+              />
+              {camera.status === "requesting"
+                ? "Meminta izin kamera"
+                : camera.stream
+                  ? "Kamera aktif"
+                  : "Kamera belum aktif"}
+            </span>
+          </div>
+          <div className={styles.videoFrame}>
+            <video
+              ref={videoRef}
+              className={mirror ? styles.videoMirrored : styles.video}
+              style={{
+                filter: getBoothFilter(selectedFilter, selectedFilterIntensity)
+                  .css,
+              }}
+              autoPlay
+              muted
+              playsInline
+              hidden={!camera.stream}
+              aria-label="Pratinjau langsung dari kamera"
+            />
+            {!camera.stream ? (
+              <div className={styles.videoPlaceholder}>
+                <span className={styles.cameraGlyph} aria-hidden="true">
+                  ◉
+                </span>
+                <p>Kameramu akan muncul di sini</p>
+                <span>Belum ada gambar yang diambil</span>
+              </div>
+            ) : null}
+          </div>
+          <p className={styles.previewCaption}>
+            {camera.stream
+              ? "Pastikan pencahayaan cukup sebelum memulai."
+              : "Pratinjau hanya muncul setelah kamu mengaktifkan kamera."}
+          </p>
+        </section>
+
         <section className={styles.setupCard} aria-labelledby="booth-title">
           <p className={styles.eyebrow}>Studio foto kecil</p>
           <h1 id="booth-title">Siapkan sesi fotomu</h1>
@@ -541,56 +591,6 @@ export function BoothSession() {
           <p className={styles.privacyNote}>
             Foto diproses di browser dan tidak dikirim ke server. Kamu bisa
             mematikan kamera kapan saja.
-          </p>
-        </section>
-
-        <section className={styles.previewCard} aria-label="Pratinjau kamera">
-          <div className={styles.previewHeader}>
-            <span className={styles.previewTitle}>Pratinjau</span>
-            <span className={styles.cameraStatus} aria-live="polite">
-              <span
-                className={
-                  camera.stream
-                    ? `${styles.statusDot} ${styles.statusDotLive}`
-                    : styles.statusDot
-                }
-                aria-hidden="true"
-              />
-              {camera.status === "requesting"
-                ? "Meminta izin kamera"
-                : camera.stream
-                  ? "Kamera aktif"
-                  : "Kamera belum aktif"}
-            </span>
-          </div>
-          <div className={styles.videoFrame}>
-            <video
-              ref={videoRef}
-              className={mirror ? styles.videoMirrored : styles.video}
-              style={{
-                filter: getBoothFilter(selectedFilter, selectedFilterIntensity)
-                  .css,
-              }}
-              autoPlay
-              muted
-              playsInline
-              hidden={!camera.stream}
-              aria-label="Pratinjau langsung dari kamera"
-            />
-            {!camera.stream ? (
-              <div className={styles.videoPlaceholder}>
-                <span className={styles.cameraGlyph} aria-hidden="true">
-                  ◉
-                </span>
-                <p>Kameramu akan muncul di sini</p>
-                <span>Belum ada gambar yang diambil</span>
-              </div>
-            ) : null}
-          </div>
-          <p className={styles.previewCaption}>
-            {camera.stream
-              ? "Pastikan pencahayaan cukup sebelum memulai."
-              : "Pratinjau hanya muncul setelah kamu mengaktifkan kamera."}
           </p>
         </section>
 

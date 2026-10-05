@@ -14,6 +14,9 @@ export function SiteHeader() {
         <Link href="/guide">Panduan</Link>
         <Link href="/privacy">Privasi</Link>
         <Link href="/help">Bantuan</Link>
+        <Link className="header-cta" href="/booth">
+          Mulai foto <span aria-hidden="true">↗</span>
+        </Link>
       </nav>
     </header>
   );
