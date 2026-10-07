@@ -23,6 +23,16 @@ export const CatalogCollectionSchema = z.enum([
 ]);
 
 const colorSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/);
+const normalizedPhotoWindowSchema = z
+  .object({
+    x: z.number().min(0).max(1),
+    y: z.number().min(0).max(1),
+    width: z.number().positive().max(1),
+    height: z.number().positive().max(1),
+  })
+  .strict()
+  .refine((window) => window.x + window.width <= 1, { path: ["width"] })
+  .refine((window) => window.y + window.height <= 1, { path: ["height"] });
 const publicImageUrlSchema = z.url().refine((value) => {
   const protocol = new URL(value).protocol;
   return protocol === "http:" || protocol === "https:";
@@ -38,6 +48,8 @@ export const FrameLayoutConfigSchema = z
     layout: z.enum(["strip", "grid", "both"]).default("both"),
     caption: z.string().max(40).default(""),
     motif: z.enum(["none", "dots", "sparkles", "checker"]).default("none"),
+    photoWindows: z.array(normalizedPhotoWindowSchema).length(3).optional(),
+    backgroundRemoval: z.enum(["light-neutral", "gray-checker"]).optional(),
   })
   .strict();
 export type FrameLayoutConfig = z.infer<typeof FrameLayoutConfigSchema>;
@@ -85,7 +97,7 @@ export const AssetMutationSchema = z
       .trim()
       .min(1)
       .max(512)
-      .regex(/^[a-zA-Z0-9][a-zA-Z0-9/_-]*\.(svg|png|jpe?g|webp)$/i)
+      .regex(/^[a-zA-Z0-9][a-zA-Z0-9/ _()-]*\.(svg|png|jpe?g|webp)$/i)
       .refine(
         (value) => !value.includes(".."),
         "storage key cannot traverse directories",

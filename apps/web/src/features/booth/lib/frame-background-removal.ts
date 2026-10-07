@@ -5,6 +5,15 @@ export interface VisibleFrameBounds {
   height: number;
 }
 
+export interface NormalizedPhotoWindow {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export type FrameBackgroundRemovalMode = "light-neutral" | "gray-checker";
+
 export type PreparedFrameImage =
   | {
       kind: "ready";
@@ -344,6 +353,7 @@ export function removeLightNeutralBackgroundPixels(
   pixels: Uint8ClampedArray,
   width: number,
   height: number,
+  mode: FrameBackgroundRemovalMode = "light-neutral",
 ):
   | { kind: "removed"; pixels: Uint8ClampedArray }
   | { kind: "already-transparent" }
@@ -359,7 +369,9 @@ export function removeLightNeutralBackgroundPixels(
   const { colors, hasTransparency } = getCornerColors(pixels, width, height);
 
   if (hasTransparency) return { kind: "already-transparent" };
-  if (colors.length === 0) return { kind: "unrecognized" };
+  if (colors.length === 0 && mode !== "gray-checker") {
+    return { kind: "unrecognized" };
+  }
 
   let removedPixels = 0;
   for (let offset = 0; offset < pixels.length; offset += 4) {
@@ -371,6 +383,17 @@ export function removeLightNeutralBackgroundPixels(
       green: pixels[offset + 1] ?? 0,
       blue: pixels[offset + 2] ?? 0,
     };
+    if (mode === "gray-checker") {
+      const highest = Math.max(pixel.red, pixel.green, pixel.blue);
+      const lowest = Math.min(pixel.red, pixel.green, pixel.blue);
+      const luminance = (pixel.red + pixel.green + pixel.blue) / 3;
+      if (highest - lowest <= 38 && luminance >= 24 && luminance <= 185) {
+        pixels[offset + 3] = 0;
+        removedPixels += 1;
+      }
+      continue;
+    }
+
     const highest = Math.max(pixel.red, pixel.green, pixel.blue);
     const lowest = Math.min(pixel.red, pixel.green, pixel.blue);
     if (lowest < 175 || highest - lowest > 48) continue;
@@ -395,11 +418,57 @@ export function removeLightNeutralBackgroundPixels(
   return { kind: "removed", pixels };
 }
 
+export function applyPhotoWindowCutouts(
+  pixels: Uint8ClampedArray,
+  width: number,
+  height: number,
+  windows: readonly NormalizedPhotoWindow[] | undefined,
+): VisibleFrameBounds[] {
+  if (
+    !windows ||
+    pixels.length !== width * height * 4 ||
+    width < 1 ||
+    height < 1
+  ) {
+    return [];
+  }
+
+  return windows.flatMap((window) => {
+    if (
+      !Number.isFinite(window.x) ||
+      !Number.isFinite(window.y) ||
+      !Number.isFinite(window.width) ||
+      !Number.isFinite(window.height) ||
+      window.x < 0 ||
+      window.y < 0 ||
+      window.width <= 0 ||
+      window.height <= 0 ||
+      window.x + window.width > 1 ||
+      window.y + window.height > 1
+    ) {
+      return [];
+    }
+
+    const x = Math.floor(window.x * width);
+    const y = Math.floor(window.y * height);
+    const right = Math.round((window.x + window.width) * width);
+    const bottom = Math.round((window.y + window.height) * height);
+    for (let row = y; row < bottom; row += 1) {
+      for (let column = x; column < right; column += 1) {
+        pixels[(row * width + column) * 4 + 3] = 0;
+      }
+    }
+    return [{ x, y, width: right - x, height: bottom - y }];
+  });
+}
+
 export function prepareFrameImage(
   source: CanvasImageSource,
   width: number,
   height: number,
   removeBackground: boolean,
+  backgroundRemoval: FrameBackgroundRemovalMode = "light-neutral",
+  configuredPhotoWindows?: readonly NormalizedPhotoWindow[],
 ): PreparedFrameImage {
   const canvas = document.createElement("canvas");
   canvas.width = width;
@@ -414,9 +483,17 @@ export function prepareFrameImage(
       imageData.data,
       width,
       height,
+      backgroundRemoval,
     );
     if (result.kind === "unrecognized") return result;
   }
+
+  const configuredWindows = applyPhotoWindowCutouts(
+    imageData.data,
+    width,
+    height,
+    configuredPhotoWindows,
+  );
 
   const bounds = getVisibleFrameBounds(imageData.data, width, height);
   if (!bounds) return { kind: "unrecognized" };
@@ -426,6 +503,9 @@ export function prepareFrameImage(
     kind: "ready",
     canvas,
     bounds,
-    photoWindows: findFramePhotoWindows(imageData.data, width, height),
+    photoWindows:
+      configuredWindows.length === 3
+        ? configuredWindows
+        : findFramePhotoWindows(imageData.data, width, height),
   };
 }

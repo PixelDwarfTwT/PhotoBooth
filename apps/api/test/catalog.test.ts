@@ -23,6 +23,33 @@ test("fills safe defaults for a frame layout", () => {
   );
 });
 
+test("accepts explicit photo window geometry and checkerboard removal metadata", () => {
+  const result = FrameLayoutConfigSchema.safeParse({
+    layout: "strip",
+    photoWindows: [
+      { x: 0.3, y: 0.1, width: 0.4, height: 0.2 },
+      { x: 0.3, y: 0.4, width: 0.4, height: 0.2 },
+      { x: 0.3, y: 0.7, width: 0.4, height: 0.2 },
+    ],
+    backgroundRemoval: "gray-checker",
+  });
+
+  assert.equal(result.success, true);
+});
+
+test("rejects photo windows outside the frame image", () => {
+  assert.equal(
+    FrameLayoutConfigSchema.safeParse({
+      photoWindows: [
+        { x: 0.8, y: 0.1, width: 0.4, height: 0.2 },
+        { x: 0.3, y: 0.4, width: 0.4, height: 0.2 },
+        { x: 0.3, y: 0.7, width: 0.4, height: 0.2 },
+      ],
+    }).success,
+    false,
+  );
+});
+
 test("rejects remote CSS values and unrecognized layout fields", () => {
   assert.equal(
     FrameLayoutConfigSchema.safeParse({
@@ -46,6 +73,21 @@ test("rejects asset storage traversal and missing license metadata", () => {
   });
 
   assert.equal(result.success, false);
+});
+
+test("accepts a Supabase object filename with spaces and parentheses", () => {
+  const result = AssetMutationSchema.safeParse({
+    assetType: "FRAME",
+    storageKey: "frames/download (5).png",
+    mimeType: "image/png",
+    width: 1152,
+    height: 2048,
+    fileSizeBytes: 1691031,
+    altText: "Bingkai foto tiga pose",
+    licenseNote: "Uploaded to the public catalog by the project owner.",
+  });
+
+  assert.equal(result.success, true);
 });
 
 test("rejects a theme whose publication window is reversed", () => {

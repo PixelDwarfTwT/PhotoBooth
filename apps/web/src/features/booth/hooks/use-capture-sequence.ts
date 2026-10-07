@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { capturePhoto } from "../lib/capture-photo";
+import {
+  CAPTURE_PHOTO_COUNT,
+  getCapturePhotoIndices,
+} from "../lib/capture-count";
 import type { CapturedPhoto, CapturePhase } from "../types";
 
 export interface CaptureSequenceController {
@@ -11,14 +15,9 @@ export interface CaptureSequenceController {
   countdownValue: number | null;
   announcement: string;
   error: string | null;
-  startSequence: (
-    video: HTMLVideoElement,
-    count: number,
-    seconds: number,
-  ) => Promise<boolean>;
+  startSequence: (video: HTMLVideoElement, seconds: number) => Promise<boolean>;
   resumeSequence: (
     video: HTMLVideoElement,
-    count: number,
     seconds: number,
   ) => Promise<boolean>;
   retakePhoto: (
@@ -89,13 +88,12 @@ export function useCaptureSequence(): CaptureSequenceController {
   const runSequence = useCallback(
     async (
       video: HTMLVideoElement,
-      count: number,
       seconds: number,
       startIndex: number,
       controller: AbortController,
     ): Promise<boolean> => {
       try {
-        for (let index = startIndex; index < count; index += 1) {
+        for (const index of getCapturePhotoIndices(startIndex)) {
           if (controller.signal.aborted || !mountedRef.current) return false;
           setPhase("countdown");
           setCurrentPhotoIndex(index);
@@ -104,7 +102,7 @@ export function useCaptureSequence(): CaptureSequenceController {
             if (controller.signal.aborted) return false;
             setCountdownValue(remaining);
             setAnnouncement(
-              `Foto ${index + 1} dari ${count} dalam ${remaining} detik.`,
+              `Foto ${index + 1} dari ${CAPTURE_PHOTO_COUNT} dalam ${remaining} detik.`,
             );
             await waitOneSecond(controller.signal);
           }
@@ -112,7 +110,9 @@ export function useCaptureSequence(): CaptureSequenceController {
           if (controller.signal.aborted || !mountedRef.current) return false;
           setCountdownValue(null);
           setPhase("capturing");
-          setAnnouncement(`Mengambil foto ${index + 1} dari ${count}.`);
+          setAnnouncement(
+            `Mengambil foto ${index + 1} dari ${CAPTURE_PHOTO_COUNT}.`,
+          );
           const photo = await capturePhoto(video);
           if (controller.signal.aborted || !mountedRef.current) return false;
 
@@ -146,30 +146,22 @@ export function useCaptureSequence(): CaptureSequenceController {
   );
 
   const startSequence = useCallback(
-    async (
-      video: HTMLVideoElement,
-      count: number,
-      seconds: number,
-    ): Promise<boolean> => {
+    async (video: HTMLVideoElement, seconds: number): Promise<boolean> => {
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
       publishPhotos([]);
       setError(null);
       setAnnouncement("Sesi foto dimulai.");
-      return runSequence(video, count, seconds, 0, controller);
+      return runSequence(video, seconds, 0, controller);
     },
     [publishPhotos, runSequence],
   );
 
   const resumeSequence = useCallback(
-    async (
-      video: HTMLVideoElement,
-      count: number,
-      seconds: number,
-    ): Promise<boolean> => {
+    async (video: HTMLVideoElement, seconds: number): Promise<boolean> => {
       const startIndex = photosRef.current.length;
-      if (startIndex >= count) {
+      if (startIndex >= CAPTURE_PHOTO_COUNT) {
         setPhase("complete");
         return true;
       }
@@ -179,7 +171,7 @@ export function useCaptureSequence(): CaptureSequenceController {
       abortRef.current = controller;
       setError(null);
       setAnnouncement("Melanjutkan sesi foto.");
-      return runSequence(video, count, seconds, startIndex, controller);
+      return runSequence(video, seconds, startIndex, controller);
     },
     [runSequence],
   );

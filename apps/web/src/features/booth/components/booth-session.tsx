@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useCamera } from "../hooks/use-camera";
 import { useCaptureSequence } from "../hooks/use-capture-sequence";
 import { BOOTH_FILTERS, getBoothFilter } from "../lib/editor-options";
+import { CAPTURE_PHOTO_COUNT } from "../lib/capture-count";
 import { API_ORIGIN } from "@/lib/api-origin";
 import {
   readPoseGuideCatalog,
@@ -15,7 +16,6 @@ import { PhotoEditor } from "./photo-editor";
 import styles from "./booth-session.module.css";
 import type { BoothFilter } from "../types";
 
-const PHOTO_COUNTS = [2, 3, 4, 5, 6] as const;
 const COUNTDOWNS = [3, 5, 10] as const;
 const LOCAL_POSE_GUIDES: BoothPoseGuideOption[] = [
   {
@@ -113,7 +113,6 @@ export function BoothSession() {
   }, [capture.cancelSequence]);
   const camera = useCamera(handleCameraLoss);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [photoCount, setPhotoCount] = useState(4);
   const [countdownSeconds, setCountdownSeconds] = useState(3);
   const [mirror, setMirror] = useState(true);
   const [selectedFilter, setSelectedFilter] = useState<BoothFilter>("natural");
@@ -227,9 +226,9 @@ export function BoothSession() {
       sequenceActiveRef.current = true;
       try {
         if (resume) {
-          await capture.resumeSequence(video, photoCount, countdownSeconds);
+          await capture.resumeSequence(video, countdownSeconds);
         } else {
-          await capture.startSequence(video, photoCount, countdownSeconds);
+          await capture.startSequence(video, countdownSeconds);
         }
       } finally {
         sequenceActiveRef.current = false;
@@ -388,8 +387,8 @@ export function BoothSession() {
           <p className={styles.eyebrow}>Studio foto kecil</p>
           <h1 id="booth-title">Siapkan sesi fotomu</h1>
           <p className={styles.intro}>
-            Pilih jumlah foto dan waktu untuk bersiap. Kamera hanya dimulai saat
-            kamu menekan tombol di bawah.
+            Satu sesi berisi tepat {CAPTURE_PHOTO_COUNT} foto. Atur waktu untuk
+            bersiap; kamera dimulai saat kamu menekan tombol di bawah.
           </p>
 
           {currentPoseGuide ? (
@@ -428,24 +427,6 @@ export function BoothSession() {
           ) : null}
 
           <div className={styles.settingsGrid}>
-            <label className={styles.field} htmlFor="photo-count">
-              <span>Jumlah foto</span>
-              <select
-                id="photo-count"
-                value={photoCount}
-                onChange={(event) =>
-                  setPhotoCount(Number(event.currentTarget.value))
-                }
-                disabled={settingsLocked}
-              >
-                {PHOTO_COUNTS.map((count) => (
-                  <option key={count} value={count}>
-                    {count} foto
-                  </option>
-                ))}
-              </select>
-            </label>
-
             <label className={styles.field} htmlFor="countdown-duration">
               <span>Waktu hitung mundur</span>
               <select
@@ -618,7 +599,7 @@ export function BoothSession() {
         {capture.photos.length > 0 ? (
           <CaptureReview
             photos={capture.photos}
-            targetCount={photoCount}
+            targetCount={CAPTURE_PHOTO_COUNT}
             error={capture.error}
             busy={captureBusy || isPreparingCapture}
             onRetake={(index) => void retakePhoto(index)}
@@ -627,7 +608,7 @@ export function BoothSession() {
           />
         ) : null}
 
-        {capture.photos.length === photoCount && photoCount > 0 ? (
+        {capture.photos.length === CAPTURE_PHOTO_COUNT ? (
           <PhotoEditor
             photos={capture.photos}
             mirror={mirror}

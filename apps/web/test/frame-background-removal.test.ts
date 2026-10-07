@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  applyPhotoWindowCutouts,
   getFrameCoverCrop,
   getFrameCanvasHeight,
   getVisibleFrameBounds,
@@ -36,6 +37,60 @@ test("removes a baked light checker background while keeping the dark frame", ()
   if (result.kind !== "removed") return;
   assert.equal(result.pixels[(15 * width + 20) * 4 + 3], 0);
   assert.equal(result.pixels[(15 * width + 1) * 4 + 3], 255);
+});
+
+test("removes a baked gray checkerboard while keeping colored frame art", () => {
+  const width = 40;
+  const height = 30;
+  const pixels = new Uint8ClampedArray(width * height * 4);
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const offset = (y * width + x) * 4;
+      const isFrameBorder = x < 3 || x >= width - 3;
+      const gray = (x + y) % 2 === 0 ? 52 : 105;
+      pixels[offset] = isFrameBorder ? 30 : gray;
+      pixels[offset + 1] = isFrameBorder ? 110 : gray;
+      pixels[offset + 2] = isFrameBorder ? 210 : gray;
+      pixels[offset + 3] = 255;
+    }
+  }
+
+  const result = removeLightNeutralBackgroundPixels(
+    pixels,
+    width,
+    height,
+    "gray-checker",
+  );
+
+  assert.equal(result.kind, "removed");
+  assert.equal(pixels[(15 * width + 20) * 4 + 3], 0);
+});
+
+test("configured photo windows become transparent regardless of their fill", () => {
+  const width = 100;
+  const height = 200;
+  const pixels = new Uint8ClampedArray(width * height * 4);
+  for (let offset = 0; offset < pixels.length; offset += 4) {
+    pixels[offset] = 250;
+    pixels[offset + 1] = 250;
+    pixels[offset + 2] = 250;
+    pixels[offset + 3] = 255;
+  }
+  const windows = [
+    { x: 0.2, y: 0.1, width: 0.6, height: 0.2 },
+    { x: 0.2, y: 0.4, width: 0.6, height: 0.2 },
+    { x: 0.2, y: 0.7, width: 0.6, height: 0.2 },
+  ];
+
+  const bounds = applyPhotoWindowCutouts(pixels, width, height, windows);
+
+  assert.deepEqual(bounds, [
+    { x: 20, y: 20, width: 60, height: 40 },
+    { x: 20, y: 80, width: 60, height: 40 },
+    { x: 20, y: 140, width: 60, height: 40 },
+  ]);
+  assert.equal(pixels[(30 * width + 30) * 4 + 3], 0);
+  assert.equal(pixels[(30 * width + 10) * 4 + 3], 255);
 });
 
 test("keeps a frame that has no recognizable light background", () => {

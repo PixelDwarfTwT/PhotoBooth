@@ -20,6 +20,7 @@ import {
 } from "../lib/editor-options";
 import { API_ORIGIN } from "@/lib/api-origin";
 import { readFilterCatalog, readFrameCatalog } from "../lib/catalog-client";
+import { getDefaultFrameId } from "../lib/frame-selection";
 import { canvasToBlob, renderComposition } from "../lib/canvas-compositor";
 import { createLoopGif, recordPhotoLoop } from "../lib/motion-export";
 import { StickerLayer } from "./sticker-layer";
@@ -107,7 +108,12 @@ export function PhotoEditor({
       .then(([framePayload, filterPayload]) => {
         const remoteFrames = readFrameCatalog(framePayload);
         const remoteFilters = readFilterCatalog(filterPayload);
-        if (remoteFrames.length) setFrames([...LOCAL_FRAMES, ...remoteFrames]);
+        if (remoteFrames.length) {
+          setFrames([...LOCAL_FRAMES, ...remoteFrames]);
+          setSelectedFrameId(
+            getDefaultFrameId(remoteFrames, LOCAL_FRAMES[0]!.id),
+          );
+        }
         if (remoteFilters.length) setFilterOptions(remoteFilters);
         setCatalogNotice("");
       })

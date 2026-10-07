@@ -118,6 +118,7 @@ async function decodeFrameImage(blob: Blob): Promise<DecodedFrameImage> {
 
 async function loadFrameOverlay(
   assetUrl: string | null,
+  frame: FrameLayoutConfig,
   removeBackground: boolean,
   onRemovalFailure?: () => void,
 ): Promise<FrameOverlay | null> {
@@ -160,6 +161,8 @@ async function loadFrameOverlay(
         decoded.width,
         decoded.height,
         removeBackground,
+        frame.backgroundRemoval,
+        frame.photoWindows,
       );
       decoded.dispose();
       if (result.kind === "unrecognized") {
@@ -375,6 +378,7 @@ export async function renderComposition(
 
     frameOverlay = await loadFrameOverlay(
       input.frameAssetUrl,
+      input.frame,
       input.removeFrameBackground,
       input.onFrameBackgroundRemovalFailure,
     );
