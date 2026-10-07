@@ -3,10 +3,12 @@ import test from "node:test";
 import {
   applyPhotoWindowCutouts,
   getFrameCoverCrop,
+  getFrameCanvasSize,
   getFrameCanvasHeight,
   getVisibleFrameBounds,
   findFramePhotoWindows,
   mapFramePhotoWindowsToCanvas,
+  removeFrameBackgroundPixels,
   removeLightNeutralBackgroundPixels,
 } from "../src/features/booth/lib/frame-background-removal.ts";
 
@@ -93,6 +95,174 @@ test("configured photo windows become transparent regardless of their fill", () 
   assert.equal(pixels[(30 * width + 10) * 4 + 3], 255);
 });
 
+test("keeps foreground art inside photo windows after background removal", () => {
+  const width = 100;
+  const height = 200;
+  const pixels = new Uint8ClampedArray(width * height * 4);
+  for (let offset = 0; offset < pixels.length; offset += 4) {
+    pixels[offset] = 250;
+    pixels[offset + 1] = 250;
+    pixels[offset + 2] = 250;
+    pixels[offset + 3] = 255;
+  }
+  const artOffset = (30 * width + 30) * 4;
+  pixels[artOffset] = 220;
+  pixels[artOffset + 1] = 30;
+  pixels[artOffset + 2] = 40;
+  pixels[artOffset + 3] = 255;
+  const windows = [
+    { x: 0.2, y: 0.1, width: 0.6, height: 0.2 },
+    { x: 0.2, y: 0.4, width: 0.6, height: 0.2 },
+    { x: 0.2, y: 0.7, width: 0.6, height: 0.2 },
+  ];
+
+  const backgroundResult = removeLightNeutralBackgroundPixels(
+    pixels,
+    width,
+    height,
+  );
+  const bounds = applyPhotoWindowCutouts(pixels, width, height, windows, false);
+
+  assert.equal(backgroundResult.kind, "removed");
+  assert.equal(bounds.length, 3);
+  assert.equal(pixels[artOffset + 3], 255);
+  assert.equal(pixels[(40 * width + 40) * 4 + 3], 0);
+});
+
+test("removes the white backdrop but preserves enclosed white frame artwork", () => {
+  const width = 120;
+  const height = 240;
+  const pixels = new Uint8ClampedArray(width * height * 4);
+  for (let offset = 0; offset < pixels.length; offset += 4) {
+    pixels[offset] = 250;
+    pixels[offset + 1] = 250;
+    pixels[offset + 2] = 250;
+    pixels[offset + 3] = 255;
+  }
+
+  const windows = [
+    { x: 0.2, y: 0.1, width: 0.6, height: 0.2 },
+    { x: 0.2, y: 0.4, width: 0.6, height: 0.2 },
+    { x: 0.2, y: 0.7, width: 0.6, height: 0.2 },
+  ];
+  for (const window of windows) {
+    const left = Math.round(window.x * width);
+    const top = Math.round(window.y * height);
+    const right = Math.round((window.x + window.width) * width);
+    const bottom = Math.round((window.y + window.height) * height);
+    for (let y = top - 2; y < bottom + 2; y += 1) {
+      for (let x = left - 2; x < right + 2; x += 1) {
+        if (x < left || x >= right || y < top || y >= bottom) {
+          const offset = (y * width + x) * 4;
+          pixels[offset] = 25;
+          pixels[offset + 1] = 25;
+          pixels[offset + 2] = 25;
+        }
+      }
+    }
+  }
+
+  // The first slot's white backdrop touches the outside through a small frame gap.
+  for (let x = 22; x < 24; x += 1) {
+    const offset = (30 * width + x) * 4;
+    pixels[offset] = 250;
+    pixels[offset + 1] = 250;
+    pixels[offset + 2] = 250;
+  }
+
+  // A white Spider-Man detail enclosed by its dark outline must remain above the photo.
+  for (let y = 35; y < 43; y += 1) {
+    for (let x = 45; x < 55; x += 1) {
+      const offset = (y * width + x) * 4;
+      if (x < 47 || x >= 53 || y < 37 || y >= 41) {
+        pixels[offset] = 25;
+        pixels[offset + 1] = 25;
+        pixels[offset + 2] = 25;
+      }
+    }
+  }
+
+  const result = removeFrameBackgroundPixels(pixels, width, height, windows);
+
+  assert.equal(result.kind, "removed");
+  assert.equal(pixels[3], 0, "outer white background becomes transparent");
+  assert.equal(
+    pixels[(15 * width + 30) * 4 + 3],
+    0,
+    "white photo-window background becomes transparent",
+  );
+  assert.equal(
+    pixels[(38 * width + 50) * 4 + 3],
+    255,
+    "enclosed white artwork remains opaque",
+  );
+});
+
+test("removes every edge-connected white region in a photo window while keeping enclosed art", () => {
+  const width = 100;
+  const height = 100;
+  const pixels = new Uint8ClampedArray(width * height * 4);
+  for (let offset = 0; offset < pixels.length; offset += 4) {
+    pixels[offset] = 250;
+    pixels[offset + 1] = 250;
+    pixels[offset + 2] = 250;
+    pixels[offset + 3] = 255;
+  }
+
+  // A dark frame isolates the photo opening from the exterior background.
+  for (let x = 18; x <= 81; x += 1) {
+    for (const y of [18, 81]) {
+      const offset = (y * width + x) * 4;
+      pixels[offset] = 25;
+      pixels[offset + 1] = 25;
+      pixels[offset + 2] = 25;
+    }
+  }
+  for (let y = 18; y <= 81; y += 1) {
+    for (const x of [18, 81]) {
+      const offset = (y * width + x) * 4;
+      pixels[offset] = 25;
+      pixels[offset + 1] = 25;
+      pixels[offset + 2] = 25;
+    }
+  }
+
+  // The hanging character splits the white backdrop into two edge-connected regions.
+  for (let y = 19; y < 81; y += 1) {
+    const offset = (y * width + 65) * 4;
+    pixels[offset] = 25;
+    pixels[offset + 1] = 25;
+    pixels[offset + 2] = 25;
+  }
+
+  // Enclosed white detail in the character art must remain above the photo.
+  for (let y = 40; y <= 47; y += 1) {
+    for (let x = 35; x <= 44; x += 1) {
+      if (x >= 37 && x <= 42 && y >= 42 && y <= 45) continue;
+      const offset = (y * width + x) * 4;
+      pixels[offset] = 25;
+      pixels[offset + 1] = 25;
+      pixels[offset + 2] = 25;
+    }
+  }
+
+  const result = removeFrameBackgroundPixels(pixels, width, height, [
+    { x: 0.2, y: 0.2, width: 0.6, height: 0.6 },
+  ]);
+
+  assert.equal(result.kind, "removed");
+  assert.equal(
+    pixels[(30 * width + 72) * 4 + 3],
+    0,
+    "secondary blank region is transparent",
+  );
+  assert.equal(
+    pixels[(43 * width + 39) * 4 + 3],
+    255,
+    "enclosed white character detail is retained",
+  );
+});
+
 test("keeps a frame that has no recognizable light background", () => {
   const pixels = new Uint8ClampedArray(20 * 20 * 4);
   for (let offset = 0; offset < pixels.length; offset += 4) {
@@ -160,6 +330,13 @@ test("sizes the canvas to preserve the complete photo-frame aspect ratio", () =>
   assert.equal(
     getFrameCanvasHeight({ x: 20, y: 10, width: 200, height: 400 }, 1000, 2400),
     2000,
+  );
+});
+
+test("fits tall frame output within the size limits without distorting it", () => {
+  assert.deepEqual(
+    getFrameCanvasSize({ x: 0, y: 0, width: 400, height: 1600 }, 1000, 2400),
+    { width: 600, height: 2400 },
   );
 });
 

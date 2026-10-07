@@ -19,7 +19,10 @@ test("accepts safe published frame metadata and maps it to editor options", () =
         name: "Pastel star",
         assetUrl: "https://assets.example.test/pastel-frame.png",
         altText: "Original star frame",
-        layoutConfig: { backgroundColor: "#fff2f7" },
+        layoutConfig: {
+          backgroundColor: "#fff2f7",
+          photoCropPositionY: 0,
+        },
         isLimited: false,
       },
     ],
@@ -28,6 +31,7 @@ test("accepts safe published frame metadata and maps it to editor options", () =
   assert.equal(frames.length, 1);
   assert.equal(frames[0]?.id, frameId);
   assert.equal(frames[0]?.layoutConfig.borderColor, "#f5c6d8");
+  assert.equal(frames[0]?.layoutConfig.photoCropPositionY, 0);
   assert.equal(
     frames[0]?.assetUrl,
     "https://assets.example.test/pastel-frame.png",

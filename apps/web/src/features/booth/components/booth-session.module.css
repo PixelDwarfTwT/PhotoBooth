@@ -410,6 +410,41 @@
     7px 8px 0 #f5dce2;
 }
 
+.cameraCountdown {
+  position: absolute;
+  z-index: 2;
+  top: 16px;
+  right: 16px;
+  display: grid;
+  width: clamp(84px, 22vw, 108px);
+  aspect-ratio: 1;
+  align-content: center;
+  justify-items: center;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: rgb(255 250 252 / 94%);
+  color: var(--accent-text);
+  box-shadow:
+    0 0 0 1px rgb(191 61 107 / 48%),
+    0 5px 20px rgb(36 22 28 / 24%);
+  pointer-events: none;
+}
+
+.cameraCountdownLabel {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.cameraCountdownNumber {
+  font-size: clamp(2.8rem, 12vw, 3.8rem);
+  font-variant-numeric: tabular-nums;
+  font-weight: 900;
+  line-height: 0.96;
+}
+
 .video,
 .videoMirrored {
   width: 100%;
@@ -479,19 +514,6 @@
   color: var(--muted);
   font-size: 0.85rem;
   font-weight: 650;
-}
-
-.countdownNumber {
-  display: grid;
-  width: 32px;
-  height: 32px;
-  flex: 0 0 32px;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--accent);
-  color: var(--on-accent);
-  font-size: 1.05rem;
-  font-variant-numeric: tabular-nums;
 }
 
 .captureReview,

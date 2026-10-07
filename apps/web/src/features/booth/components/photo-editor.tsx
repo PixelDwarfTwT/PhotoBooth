@@ -20,7 +20,10 @@ import {
 } from "../lib/editor-options";
 import { API_ORIGIN } from "@/lib/api-origin";
 import { readFilterCatalog, readFrameCatalog } from "../lib/catalog-client";
-import { getDefaultFrameId } from "../lib/frame-selection";
+import {
+  getDefaultFrameId,
+  prioritizeRemoteFrames,
+} from "../lib/frame-selection";
 import { canvasToBlob, renderComposition } from "../lib/canvas-compositor";
 import { createLoopGif, recordPhotoLoop } from "../lib/motion-export";
 import { StickerLayer } from "./sticker-layer";
@@ -109,13 +112,15 @@ export function PhotoEditor({
         const remoteFrames = readFrameCatalog(framePayload);
         const remoteFilters = readFilterCatalog(filterPayload);
         if (remoteFrames.length) {
-          setFrames([...LOCAL_FRAMES, ...remoteFrames]);
+          setFrames(prioritizeRemoteFrames(remoteFrames, LOCAL_FRAMES));
           setSelectedFrameId(
             getDefaultFrameId(remoteFrames, LOCAL_FRAMES[0]!.id),
           );
         }
         if (remoteFilters.length) setFilterOptions(remoteFilters);
-        setCatalogNotice("");
+        setCatalogNotice(
+          `${remoteFrames.length} bingkai Supabase + ${LOCAL_FRAMES.length} preset lokal tersedia.`,
+        );
       })
       .catch(() => {
         if (!controller.signal.aborted) {
@@ -440,7 +445,7 @@ export function PhotoEditor({
           </fieldset>
 
           <fieldset className={styles.editorGroup}>
-            <legend>Bingkai foto</legend>
+            <legend>Bingkai foto ({frames.length})</legend>
             <div className={styles.frameOptions}>
               {frames.map((frame) => (
                 <button

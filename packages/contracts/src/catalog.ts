@@ -48,6 +48,7 @@ export const FrameLayoutConfigSchema = z
     layout: z.enum(["strip", "grid", "both"]).default("both"),
     caption: z.string().max(40).default(""),
     motif: z.enum(["none", "dots", "sparkles", "checker"]).default("none"),
+    photoCropPositionY: z.number().min(0).max(1).optional(),
     photoWindows: z.array(normalizedPhotoWindowSchema).length(3).optional(),
     backgroundRemoval: z.enum(["light-neutral", "gray-checker"]).optional(),
   })

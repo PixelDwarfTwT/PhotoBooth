@@ -375,6 +375,17 @@ export function BoothSession() {
                 <span>Belum ada gambar yang diambil</span>
               </div>
             ) : null}
+            {capture.countdownValue !== null &&
+            capture.currentPhotoIndex !== null ? (
+              <div className={styles.cameraCountdown} aria-hidden="true">
+                <span className={styles.cameraCountdownLabel}>
+                  Foto {capture.currentPhotoIndex + 1}/{CAPTURE_PHOTO_COUNT}
+                </span>
+                <span className={styles.cameraCountdownNumber}>
+                  {capture.countdownValue}
+                </span>
+              </div>
+            ) : null}
           </div>
           <p className={styles.previewCaption}>
             {camera.stream
@@ -581,11 +592,6 @@ export function BoothSession() {
             role="status"
             aria-live="polite"
           >
-            {capture.countdownValue !== null ? (
-              <span className={styles.countdownNumber} aria-hidden="true">
-                {capture.countdownValue}
-              </span>
-            ) : null}
             {capture.announcement}
           </p>
         ) : null}

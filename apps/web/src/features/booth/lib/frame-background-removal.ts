@@ -107,6 +107,22 @@ export function getFrameCanvasHeight(
   );
 }
 
+export function getFrameCanvasSize(
+  bounds: VisibleFrameBounds,
+  maxWidth: number,
+  maxHeight: number,
+): { width: number; height: number } {
+  if (bounds.width < 1 || bounds.height < 1 || maxWidth < 1 || maxHeight < 1) {
+    return { width: 1, height: 1 };
+  }
+
+  const scale = Math.min(maxWidth / bounds.width, maxHeight / bounds.height);
+  return {
+    width: Math.max(1, Math.round(bounds.width * scale)),
+    height: Math.max(1, Math.round(bounds.height * scale)),
+  };
+}
+
 export function mapFramePhotoWindowsToCanvas(
   windows: VisibleFrameBounds[],
   crop: VisibleFrameBounds,
@@ -418,11 +434,242 @@ export function removeLightNeutralBackgroundPixels(
   return { kind: "removed", pixels };
 }
 
+function getLightBackgroundFade(
+  pixels: Uint8ClampedArray,
+  offset: number,
+  colors: readonly ColorSample[],
+): number | null {
+  if ((pixels[offset + 3] ?? 0) < OPAQUE_ALPHA_THRESHOLD) return null;
+  const pixel: ColorSample = {
+    red: pixels[offset] ?? 0,
+    green: pixels[offset + 1] ?? 0,
+    blue: pixels[offset + 2] ?? 0,
+  };
+  const highest = Math.max(pixel.red, pixel.green, pixel.blue);
+  const lowest = Math.min(pixel.red, pixel.green, pixel.blue);
+  if (lowest < 175 || highest - lowest > 48) return null;
+
+  const distance = Math.min(
+    ...colors.map((sample) => colorDistance(pixel, sample)),
+  );
+  if (distance <= MAX_COLOR_DISTANCE) return 0;
+  if (distance < MAX_COLOR_DISTANCE + FEATHER_DISTANCE) {
+    return (distance - MAX_COLOR_DISTANCE) / FEATHER_DISTANCE;
+  }
+  return null;
+}
+
+/**
+ * Removes flat light backgrounds without erasing enclosed white artwork.
+ * The exterior background is flood-filled from the image edges. Within each
+ * configured photo opening, edge-connected background components are removed
+ * while enclosed white artwork stays in the foreground layer.
+ */
+export function removeFrameBackgroundPixels(
+  pixels: Uint8ClampedArray,
+  width: number,
+  height: number,
+  windows: readonly NormalizedPhotoWindow[] | undefined,
+):
+  | { kind: "removed"; pixels: Uint8ClampedArray }
+  | { kind: "already-transparent" }
+  | { kind: "unrecognized" } {
+  const pixelCount = width * height;
+  if (
+    width < 1 ||
+    height < 1 ||
+    pixelCount > MAX_PROCESSING_PIXELS ||
+    pixels.length !== pixelCount * 4
+  ) {
+    return { kind: "unrecognized" };
+  }
+
+  const { colors, hasTransparency } = getCornerColors(pixels, width, height);
+  if (hasTransparency) return { kind: "already-transparent" };
+  if (colors.length === 0) return { kind: "unrecognized" };
+
+  const visited = new Uint8Array(pixelCount);
+  const photoWindowMask = new Uint8Array(pixelCount);
+  const queue = new Int32Array(pixelCount);
+  let removedPixels = 0;
+
+  const photoWindowRects = (windows ?? []).flatMap((window) => {
+    if (
+      !Number.isFinite(window.x) ||
+      !Number.isFinite(window.y) ||
+      !Number.isFinite(window.width) ||
+      !Number.isFinite(window.height) ||
+      window.x < 0 ||
+      window.y < 0 ||
+      window.width <= 0 ||
+      window.height <= 0 ||
+      window.x + window.width > 1 ||
+      window.y + window.height > 1
+    ) {
+      return [];
+    }
+    const left = Math.floor(window.x * width);
+    const top = Math.floor(window.y * height);
+    const right = Math.min(
+      width,
+      Math.round((window.x + window.width) * width),
+    );
+    const bottom = Math.min(
+      height,
+      Math.round((window.y + window.height) * height),
+    );
+    if (right <= left || bottom <= top) return [];
+    return [{ left, top, right, bottom }];
+  });
+
+  for (const rect of photoWindowRects) {
+    for (let y = rect.top; y < rect.bottom; y += 1) {
+      photoWindowMask.fill(1, y * width + rect.left, y * width + rect.right);
+    }
+  }
+
+  function enqueueBackground(index: number, tail: number): number {
+    if (visited[index] === 1) return tail;
+    visited[index] = 1;
+    if (photoWindowMask[index] === 1) return tail;
+    if (getLightBackgroundFade(pixels, index * 4, colors) === null) {
+      return tail;
+    }
+    queue[tail] = index;
+    return tail + 1;
+  }
+
+  let head = 0;
+  let tail = 0;
+  for (let x = 0; x < width; x += 1) {
+    tail = enqueueBackground(x, tail);
+    tail = enqueueBackground((height - 1) * width + x, tail);
+  }
+  for (let y = 1; y < height - 1; y += 1) {
+    tail = enqueueBackground(y * width, tail);
+    tail = enqueueBackground(y * width + width - 1, tail);
+  }
+
+  function clearQueuedComponent(): void {
+    while (head < tail) {
+      const index = queue[head++] ?? 0;
+      const offset = index * 4;
+      const fade = getLightBackgroundFade(pixels, offset, colors);
+      if (fade !== null) {
+        const previousAlpha = pixels[offset + 3] ?? 0;
+        const nextAlpha = Math.round(previousAlpha * fade);
+        pixels[offset + 3] = nextAlpha;
+        if (nextAlpha < OPAQUE_ALPHA_THRESHOLD) removedPixels += 1;
+      }
+      const x = index % width;
+      const y = Math.floor(index / width);
+      if (x > 0) tail = enqueueBackground(index - 1, tail);
+      if (x < width - 1) tail = enqueueBackground(index + 1, tail);
+      if (y > 0) tail = enqueueBackground(index - width, tail);
+      if (y < height - 1) tail = enqueueBackground(index + width, tail);
+    }
+  }
+  clearQueuedComponent();
+
+  for (const rect of photoWindowRects) {
+    const { left, top, right, bottom } = rect;
+    const openingWidth = right - left;
+    const openingHeight = bottom - top;
+    if (openingWidth < 1 || openingHeight < 1) continue;
+
+    let largestComponent: number[] = [];
+    const edgeConnectedComponents: number[][] = [];
+    const openingVisited = new Uint8Array(openingWidth * openingHeight);
+    for (let y = 0; y < openingHeight; y += 1) {
+      for (let x = 0; x < openingWidth; x += 1) {
+        const localIndex = y * openingWidth + x;
+        const frameIndex = (top + y) * width + left + x;
+        if (
+          openingVisited[localIndex] === 1 ||
+          getLightBackgroundFade(pixels, frameIndex * 4, colors) === null
+        ) {
+          continue;
+        }
+
+        let componentHead = 0;
+        let componentTail = 0;
+        const component = [localIndex];
+        queue[componentTail++] = localIndex;
+        openingVisited[localIndex] = 1;
+        let touchesWindowEdge = false;
+        while (componentHead < componentTail) {
+          const current = queue[componentHead++] ?? 0;
+          const currentX = current % openingWidth;
+          const currentY = Math.floor(current / openingWidth);
+          if (
+            currentX === 0 ||
+            currentX === openingWidth - 1 ||
+            currentY === 0 ||
+            currentY === openingHeight - 1
+          ) {
+            touchesWindowEdge = true;
+          }
+          const neighbors = [
+            currentX > 0 ? current - 1 : -1,
+            currentX < openingWidth - 1 ? current + 1 : -1,
+            currentY > 0 ? current - openingWidth : -1,
+            currentY < openingHeight - 1 ? current + openingWidth : -1,
+          ];
+          for (const next of neighbors) {
+            if (next < 0 || openingVisited[next] === 1) continue;
+            openingVisited[next] = 1;
+            const nextX = next % openingWidth;
+            const nextY = Math.floor(next / openingWidth);
+            const nextFrameIndex = (top + nextY) * width + left + nextX;
+            if (
+              getLightBackgroundFade(pixels, nextFrameIndex * 4, colors) ===
+              null
+            ) {
+              continue;
+            }
+            queue[componentTail++] = next;
+            component.push(next);
+          }
+        }
+        if (component.length > largestComponent.length) {
+          largestComponent = component;
+        }
+        if (touchesWindowEdge) edgeConnectedComponents.push(component);
+      }
+    }
+
+    const backgroundComponents =
+      edgeConnectedComponents.length > 0
+        ? edgeConnectedComponents
+        : largestComponent.length > 0
+          ? [largestComponent]
+          : [];
+    for (const component of backgroundComponents) {
+      for (const localIndex of component) {
+        const localX = localIndex % openingWidth;
+        const localY = Math.floor(localIndex / openingWidth);
+        const offset = ((top + localY) * width + left + localX) * 4;
+        const previousAlpha = pixels[offset + 3] ?? 0;
+        const fade = getLightBackgroundFade(pixels, offset, colors) ?? 1;
+        const nextAlpha = Math.round(previousAlpha * fade);
+        pixels[offset + 3] = nextAlpha;
+        if (nextAlpha < OPAQUE_ALPHA_THRESHOLD) removedPixels += 1;
+      }
+    }
+  }
+
+  if (removedPixels < pixelCount * MIN_REMOVED_PIXEL_RATIO) {
+    return { kind: "unrecognized" };
+  }
+  return { kind: "removed", pixels };
+}
+
 export function applyPhotoWindowCutouts(
   pixels: Uint8ClampedArray,
   width: number,
   height: number,
   windows: readonly NormalizedPhotoWindow[] | undefined,
+  clearPixels = true,
 ): VisibleFrameBounds[] {
   if (
     !windows ||
@@ -453,9 +700,11 @@ export function applyPhotoWindowCutouts(
     const y = Math.floor(window.y * height);
     const right = Math.round((window.x + window.width) * width);
     const bottom = Math.round((window.y + window.height) * height);
-    for (let row = y; row < bottom; row += 1) {
-      for (let column = x; column < right; column += 1) {
-        pixels[(row * width + column) * 4 + 3] = 0;
+    if (clearPixels) {
+      for (let row = y; row < bottom; row += 1) {
+        for (let column = x; column < right; column += 1) {
+          pixels[(row * width + column) * 4 + 3] = 0;
+        }
       }
     }
     return [{ x, y, width: right - x, height: bottom - y }];
@@ -479,12 +728,20 @@ export function prepareFrameImage(
   context.drawImage(source, 0, 0, width, height);
   const imageData = context.getImageData(0, 0, width, height);
   if (removeBackground) {
-    const result = removeLightNeutralBackgroundPixels(
-      imageData.data,
-      width,
-      height,
-      backgroundRemoval,
-    );
+    const result =
+      backgroundRemoval === "gray-checker"
+        ? removeLightNeutralBackgroundPixels(
+            imageData.data,
+            width,
+            height,
+            backgroundRemoval,
+          )
+        : removeFrameBackgroundPixels(
+            imageData.data,
+            width,
+            height,
+            configuredPhotoWindows,
+          );
     if (result.kind === "unrecognized") return result;
   }
 
@@ -493,6 +750,7 @@ export function prepareFrameImage(
     width,
     height,
     configuredPhotoWindows,
+    !removeBackground,
   );
 
   const bounds = getVisibleFrameBounds(imageData.data, width, height);

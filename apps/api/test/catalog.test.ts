@@ -26,6 +26,7 @@ test("fills safe defaults for a frame layout", () => {
 test("accepts explicit photo window geometry and checkerboard removal metadata", () => {
   const result = FrameLayoutConfigSchema.safeParse({
     layout: "strip",
+    photoCropPositionY: 0,
     photoWindows: [
       { x: 0.3, y: 0.1, width: 0.4, height: 0.2 },
       { x: 0.3, y: 0.4, width: 0.4, height: 0.2 },
@@ -35,6 +36,22 @@ test("accepts explicit photo window geometry and checkerboard removal metadata",
   });
 
   assert.equal(result.success, true);
+});
+
+test("rejects frame crop metadata that changes the template aspect ratio", () => {
+  assert.equal(
+    FrameLayoutConfigSchema.safeParse({
+      frameBounds: { x: 0.275, y: 0.03, width: 0.455, height: 0.86 },
+    }).success,
+    false,
+  );
+});
+
+test("rejects photo crop positions outside the image", () => {
+  assert.equal(
+    FrameLayoutConfigSchema.safeParse({ photoCropPositionY: 1.1 }).success,
+    false,
+  );
 });
 
 test("rejects photo windows outside the frame image", () => {

@@ -2,8 +2,8 @@ import { getBoothFilter } from "./editor-options";
 import type { FrameLayoutConfig } from "@photobooth/contracts";
 import { readBoundedBlob } from "@/lib/read-bounded-blob";
 import {
+  getFrameCanvasSize,
   getFrameCoverCrop,
-  getFrameCanvasHeight,
   mapFramePhotoWindowsToCanvas,
   prepareFrameImage,
   type VisibleFrameBounds,
@@ -62,6 +62,39 @@ interface PhotoCell {
   y: number;
   width: number;
   height: number;
+}
+
+export interface CoverSourceCrop {
+  sourceX: number;
+  sourceY: number;
+  cropWidth: number;
+  cropHeight: number;
+}
+
+export function getCoverSourceCrop(
+  sourceWidth: number,
+  sourceHeight: number,
+  destinationWidth: number,
+  destinationHeight: number,
+  verticalPositionY = 0.5,
+): CoverSourceCrop {
+  const sourceRatio = sourceWidth / sourceHeight;
+  const destinationRatio = destinationWidth / destinationHeight;
+  const verticalAnchor = Math.min(1, Math.max(0, verticalPositionY));
+  let sourceX = 0;
+  let sourceY = 0;
+  let cropWidth = sourceWidth;
+  let cropHeight = sourceHeight;
+
+  if (sourceRatio > destinationRatio) {
+    cropWidth = sourceHeight * destinationRatio;
+    sourceX = (sourceWidth - cropWidth) / 2;
+  } else {
+    cropHeight = sourceWidth / destinationRatio;
+    sourceY = (sourceHeight - cropHeight) * verticalAnchor;
+  }
+
+  return { sourceX, sourceY, cropWidth, cropHeight };
 }
 
 async function loadPhoto(photo: CapturedPhoto): Promise<CanvasPhoto> {
@@ -192,6 +225,7 @@ function getPhotoCells(
   count: number,
   height: number,
   cellGap: number,
+  canvasWidth = CANVAS_WIDTH,
 ): PhotoCell[] {
   if (layout === "strip") {
     const availableCellHeight = Math.floor(
@@ -199,7 +233,7 @@ function getPhotoCells(
         count,
     );
     const cellHeight = Math.min(STRIP_CELL_HEIGHT, availableCellHeight);
-    const cellWidth = CANVAS_WIDTH - OUTER_PADDING * 2;
+    const cellWidth = canvasWidth - OUTER_PADDING * 2;
 
     return Array.from({ length: count }, (_, index) => ({
       x: OUTER_PADDING,
@@ -211,7 +245,7 @@ function getPhotoCells(
 
   const columns = 2;
   const cellWidth =
-    (CANVAS_WIDTH - OUTER_PADDING * 2 - cellGap * (columns - 1)) / columns;
+    (canvasWidth - OUTER_PADDING * 2 - cellGap * (columns - 1)) / columns;
   const cellHeight = Math.min(360, Math.round(cellWidth * 0.72));
 
   return Array.from({ length: count }, (_, index) => ({
@@ -226,16 +260,10 @@ function getCanvasHeight(
   layout: BoothLayout,
   count: number,
   cellGap: number,
+  canvasWidth = CANVAS_WIDTH,
 ): number {
   if (layout === "strip") {
-    const maxCellHeight = Math.floor(
-      (MAX_CANVAS_HEIGHT -
-        OUTER_PADDING * 2 -
-        FOOTER_HEIGHT -
-        cellGap * (count - 1)) /
-        count,
-    );
-    const cellHeight = Math.min(STRIP_CELL_HEIGHT, maxCellHeight);
+    const cellHeight = STRIP_CELL_HEIGHT;
     return (
       OUTER_PADDING * 2 +
       count * cellHeight +
@@ -245,7 +273,7 @@ function getCanvasHeight(
   }
 
   const rows = Math.ceil(count / 2);
-  const cellWidth = (CANVAS_WIDTH - OUTER_PADDING * 2 - cellGap) / 2;
+  const cellWidth = (canvasWidth - OUTER_PADDING * 2 - cellGap) / 2;
   const cellHeight = Math.min(360, Math.round(cellWidth * 0.72));
   return (
     OUTER_PADDING * 2 +
@@ -262,21 +290,15 @@ function drawCover(
   sourceHeight: number,
   cell: PhotoCell,
   mirror: boolean,
+  verticalPositionY: number,
 ): void {
-  const sourceRatio = sourceWidth / sourceHeight;
-  const destinationRatio = cell.width / cell.height;
-  let sourceX = 0;
-  let sourceY = 0;
-  let cropWidth = sourceWidth;
-  let cropHeight = sourceHeight;
-
-  if (sourceRatio > destinationRatio) {
-    cropWidth = sourceHeight * destinationRatio;
-    sourceX = (sourceWidth - cropWidth) / 2;
-  } else {
-    cropHeight = sourceWidth / destinationRatio;
-    sourceY = (sourceHeight - cropHeight) / 2;
-  }
+  const crop = getCoverSourceCrop(
+    sourceWidth,
+    sourceHeight,
+    cell.width,
+    cell.height,
+    verticalPositionY,
+  );
 
   context.save();
   if (mirror) {
@@ -285,10 +307,10 @@ function drawCover(
   }
   context.drawImage(
     image,
-    sourceX,
-    sourceY,
-    cropWidth,
-    cropHeight,
+    crop.sourceX,
+    crop.sourceY,
+    crop.cropWidth,
+    crop.cropHeight,
     cell.x,
     cell.y,
     cell.width,
@@ -300,18 +322,20 @@ function drawCover(
 function drawSticker(
   context: CanvasRenderingContext2D,
   sticker: StickerPlacement,
+  canvasWidth: number,
 ): void {
+  const scale = canvasWidth / CANVAS_WIDTH;
   context.save();
-  context.font = `${sticker.fontSize}px "Segoe UI Symbol", "Apple Symbols", sans-serif`;
+  context.font = `${sticker.fontSize * scale}px "Segoe UI Symbol", "Apple Symbols", sans-serif`;
   context.textAlign = "center";
   context.textBaseline = "middle";
   context.shadowColor = "rgb(52 40 59 / 24%)";
-  context.shadowBlur = 10;
-  context.shadowOffsetY = 3;
+  context.shadowBlur = 10 * scale;
+  context.shadowOffsetY = 3 * scale;
   context.fillStyle = "#fff";
   context.fillText(
     sticker.symbol,
-    sticker.x * CANVAS_WIDTH,
+    sticker.x * canvasWidth,
     sticker.y * context.canvas.height,
   );
   context.restore();
@@ -321,27 +345,29 @@ function drawFrameMotif(
   context: CanvasRenderingContext2D,
   config: FrameLayoutConfig,
   height: number,
+  canvasWidth: number,
 ): void {
+  const scale = canvasWidth / CANVAS_WIDTH;
   context.save();
   context.fillStyle = config.accentColor;
 
   if (config.motif === "dots") {
     for (let index = 0; index < 8; index += 1) {
-      const x = 42 + index * 130;
+      const x = (42 + index * 130) * scale;
       context.beginPath();
-      context.arc(x, 18, 4, 0, Math.PI * 2);
+      context.arc(x, 18 * scale, 4 * scale, 0, Math.PI * 2);
       context.fill();
       context.beginPath();
-      context.arc(x, height - 18, 4, 0, Math.PI * 2);
+      context.arc(x, height - 18 * scale, 4 * scale, 0, Math.PI * 2);
       context.fill();
     }
   } else if (config.motif === "checker") {
-    const squareSize = 13;
+    const squareSize = 13 * scale;
     for (let index = 0; index < 12; index += 1) {
       if (index % 2 === 0) {
         context.fillRect(index * squareSize, 0, squareSize, squareSize);
         context.fillRect(
-          CANVAS_WIDTH - (index + 1) * squareSize,
+          canvasWidth - (index + 1) * squareSize,
           height - squareSize,
           squareSize,
           squareSize,
@@ -349,11 +375,11 @@ function drawFrameMotif(
       }
     }
   } else if (config.motif === "sparkles") {
-    context.font = '24px "Segoe UI Symbol", "Apple Symbols", sans-serif';
+    context.font = `${24 * scale}px "Segoe UI Symbol", "Apple Symbols", sans-serif`;
     context.textAlign = "center";
     context.textBaseline = "middle";
-    context.fillText("✦", 18, 18);
-    context.fillText("✦", CANVAS_WIDTH - 18, height - 18);
+    context.fillText("✦", 18 * scale, 18 * scale);
+    context.fillText("✦", canvasWidth - 18 * scale, height - 18 * scale);
   }
 
   context.restore();
@@ -387,39 +413,44 @@ export async function renderComposition(
     const hasMatchingFrameWindows =
       input.layout === "strip" &&
       frameOverlay?.photoWindows.length === photos.length;
-    const height =
+    const frameCanvasSize =
       frameOverlay && hasMatchingFrameWindows
-        ? getFrameCanvasHeight(
+        ? getFrameCanvasSize(
             frameOverlay.bounds,
             CANVAS_WIDTH,
             MAX_CANVAS_HEIGHT,
           )
-        : getCanvasHeight(input.layout, photos.length, input.frame.photoGap);
+        : null;
+    const canvasWidth = frameCanvasSize?.width ?? CANVAS_WIDTH;
+    const height =
+      frameCanvasSize?.height ??
+      getCanvasHeight(input.layout, photos.length, input.frame.photoGap);
     const stagingCanvas = document.createElement("canvas");
-    stagingCanvas.width = CANVAS_WIDTH;
+    stagingCanvas.width = canvasWidth;
     stagingCanvas.height = height;
     const context = stagingCanvas.getContext("2d");
     if (!context) throw new Error("Canvas editor tidak dapat dimulai.");
 
     context.fillStyle = input.frame.backgroundColor || CANVAS_BACKGROUND;
-    context.fillRect(0, 0, CANVAS_WIDTH, height);
+    context.fillRect(0, 0, canvasWidth, height);
     const frameCrop = frameOverlay
       ? hasMatchingFrameWindows
         ? frameOverlay.bounds
-        : getFrameCoverCrop(frameOverlay.bounds, CANVAS_WIDTH, height)
+        : getFrameCoverCrop(frameOverlay.bounds, canvasWidth, height)
       : null;
     const mappedFrameWindows =
       frameCrop && frameOverlay
         ? mapFramePhotoWindowsToCanvas(
             frameOverlay.photoWindows,
             frameCrop,
-            CANVAS_WIDTH,
+            canvasWidth,
             height,
           )
         : [];
     const useFramePhotoWindows =
       hasMatchingFrameWindows && mappedFrameWindows.length === photos.length;
-    if (!useFramePhotoWindows) drawFrameMotif(context, input.frame, height);
+    if (!useFramePhotoWindows)
+      drawFrameMotif(context, input.frame, height, canvasWidth);
 
     const cells = useFramePhotoWindows
       ? mappedFrameWindows
@@ -428,6 +459,7 @@ export async function renderComposition(
           photos.length,
           height,
           input.frame.photoGap,
+          canvasWidth,
         );
     const requestedFilter = getBoothFilter(input.filter, input.filterIntensity);
     const filterSupported = "filter" in context;
@@ -462,6 +494,7 @@ export async function renderComposition(
         photo.height,
         cell,
         input.mirror,
+        input.frame.photoCropPositionY ?? 0.5,
       );
       if (filterSupported) context.filter = "none";
       context.restore();
@@ -474,7 +507,7 @@ export async function renderComposition(
       context.textBaseline = "middle";
       context.fillText(
         input.frame.caption.trim() || "good times",
-        CANVAS_WIDTH / 2,
+        canvasWidth / 2,
         height - FOOTER_HEIGHT / 2,
       );
 
@@ -484,7 +517,7 @@ export async function renderComposition(
         context.strokeRect(
           input.frame.borderWidth / 2,
           input.frame.borderWidth / 2,
-          CANVAS_WIDTH - input.frame.borderWidth,
+          canvasWidth - input.frame.borderWidth,
           height - input.frame.borderWidth,
         );
       }
@@ -500,15 +533,16 @@ export async function renderComposition(
         crop.height,
         0,
         0,
-        CANVAS_WIDTH,
+        canvasWidth,
         height,
       );
     }
 
-    for (const sticker of input.stickers) drawSticker(context, sticker);
+    for (const sticker of input.stickers)
+      drawSticker(context, sticker, canvasWidth);
 
     if (input.isCurrent && !input.isCurrent()) return false;
-    canvas.width = CANVAS_WIDTH;
+    canvas.width = canvasWidth;
     canvas.height = height;
     const targetContext = canvas.getContext("2d");
     if (!targetContext)
