@@ -13,6 +13,9 @@ import {
 } from "../lib/catalog-client";
 import { CaptureReview } from "./capture-review";
 import { PhotoEditor } from "./photo-editor";
+import { RemoteCameraPairing } from "./remote-camera-pairing";
+import { useRemoteCameraHost } from "../hooks/use-remote-camera-host";
+import { preferRemoteCameraStream } from "../lib/remote-camera";
 import styles from "./booth-session.module.css";
 import type { BoothFilter } from "../types";
 
@@ -112,6 +115,11 @@ export function BoothSession() {
     if (sequenceActiveRef.current) capture.cancelSequence();
   }, [capture.cancelSequence]);
   const camera = useCamera(handleCameraLoss);
+  const remoteCamera = useRemoteCameraHost();
+  const activeCameraStream = preferRemoteCameraStream(
+    remoteCamera.stream,
+    camera.stream,
+  );
   const videoRef = useRef<HTMLVideoElement>(null);
   const [countdownSeconds, setCountdownSeconds] = useState(3);
   const [mirror, setMirror] = useState(true);
@@ -126,6 +134,9 @@ export function BoothSession() {
     capture.phase === "countdown" || capture.phase === "capturing";
   const settingsLocked =
     camera.status === "requesting" ||
+    remoteCamera.state === "starting" ||
+    remoteCamera.state === "waiting" ||
+    remoteCamera.state === "connecting" ||
     isPreparingCapture ||
     captureBusy ||
     capture.photos.length > 0;
@@ -153,8 +164,8 @@ export function BoothSession() {
     const video = videoRef.current;
     if (!video) return;
 
-    if (camera.stream) {
-      video.srcObject = camera.stream;
+    if (activeCameraStream) {
+      video.srcObject = activeCameraStream;
       void video.play().catch(() => {
         setPreviewError(
           "Pratinjau kamera tidak dapat diputar. Coba matikan lalu aktifkan kamera kembali.",
@@ -169,7 +180,7 @@ export function BoothSession() {
       video.pause();
       video.srcObject = null;
     };
-  }, [camera.stream]);
+  }, [activeCameraStream]);
 
   useEffect(() => {
     if (capture.phase === "complete" || capture.phase === "error") {
@@ -182,6 +193,21 @@ export function BoothSession() {
       capture.cancelSequence();
     }
   }, [camera.error?.code, capture.cancelSequence, captureBusy]);
+
+  useEffect(() => {
+    if (remoteCamera.state === "error" && captureBusy) {
+      capture.cancelSequence();
+      setActionError(
+        remoteCamera.error ??
+          "Koneksi kamera HP terputus. Ulangi pairing untuk melanjutkan.",
+      );
+    }
+  }, [
+    capture.cancelSequence,
+    captureBusy,
+    remoteCamera.error,
+    remoteCamera.state,
+  ]);
 
   useEffect(
     () => () => {
@@ -213,7 +239,7 @@ export function BoothSession() {
     setIsPreparingCapture(true);
 
     try {
-      if (!camera.stream) {
+      if (!activeCameraStream) {
         const started = await camera.startCamera();
         if (!started || preparation.signal.aborted) return;
       }
@@ -257,8 +283,10 @@ export function BoothSession() {
     setIsPreparingCapture(true);
 
     try {
-      const cameraStarted = await camera.startCamera();
-      if (!cameraStarted || preparation.signal.aborted) return;
+      if (!remoteCamera.stream) {
+        const cameraStarted = await camera.startCamera();
+        if (!cameraStarted || preparation.signal.aborted) return;
+      }
 
       const video = await getVideo(preparation.signal);
       if (preparation.signal.aborted) return;
@@ -278,7 +306,7 @@ export function BoothSession() {
             ? error.message
             : "Kamera belum siap. Coba lagi.",
         );
-        camera.stopCamera();
+        if (!remoteCamera.stream) camera.stopCamera();
       }
     } finally {
       if (preparationAbortRef.current === preparation) {
@@ -293,6 +321,7 @@ export function BoothSession() {
     preparationAbortRef.current = null;
     capture.cancelSequence();
     camera.stopCamera();
+    remoteCamera.stop();
   }
 
   function stopCameraFromUser() {
@@ -300,6 +329,7 @@ export function BoothSession() {
     preparationAbortRef.current = null;
     if (sequenceActiveRef.current) capture.cancelSequence();
     camera.stopCamera();
+    remoteCamera.stop();
   }
 
   function startNewSession() {
@@ -307,12 +337,20 @@ export function BoothSession() {
     preparationAbortRef.current = null;
     capture.resetSequence();
     camera.stopCamera();
+    remoteCamera.stop();
     setActionError(null);
   }
 
   function activateCamera() {
+    remoteCamera.stop();
     setPreviewError(null);
     void camera.startCamera();
+  }
+
+  function activateRemoteCamera() {
+    camera.stopCamera();
+    setPreviewError(null);
+    void remoteCamera.start();
   }
 
   return (
@@ -339,17 +377,23 @@ export function BoothSession() {
             <span className={styles.cameraStatus} aria-live="polite">
               <span
                 className={
-                  camera.stream
+                  activeCameraStream
                     ? `${styles.statusDot} ${styles.statusDotLive}`
                     : styles.statusDot
                 }
                 aria-hidden="true"
               />
-              {camera.status === "requesting"
-                ? "Meminta izin kamera"
-                : camera.stream
-                  ? "Kamera aktif"
-                  : "Kamera belum aktif"}
+              {remoteCamera.state === "connected"
+                ? "Kamera HP aktif"
+                : remoteCamera.state === "starting" ||
+                    remoteCamera.state === "waiting" ||
+                    remoteCamera.state === "connecting"
+                  ? "Menyambungkan kamera HP"
+                  : camera.status === "requesting"
+                    ? "Meminta izin kamera"
+                    : activeCameraStream
+                      ? "Kamera aktif"
+                      : "Kamera belum aktif"}
             </span>
           </div>
           <div className={styles.videoFrame}>
@@ -363,10 +407,10 @@ export function BoothSession() {
               autoPlay
               muted
               playsInline
-              hidden={!camera.stream}
+              hidden={!activeCameraStream}
               aria-label="Pratinjau langsung dari kamera"
             />
-            {!camera.stream ? (
+            {!activeCameraStream ? (
               <div className={styles.videoPlaceholder}>
                 <span className={styles.cameraGlyph} aria-hidden="true">
                   ◉
@@ -388,7 +432,7 @@ export function BoothSession() {
             ) : null}
           </div>
           <p className={styles.previewCaption}>
-            {camera.stream
+            {activeCameraStream
               ? "Pastikan pencahayaan cukup sebelum memulai."
               : "Pratinjau hanya muncul setelah kamu mengaktifkan kamera."}
           </p>
@@ -488,7 +532,7 @@ export function BoothSession() {
             </>
           ) : null}
 
-          {camera.devices.length > 1 ? (
+          {camera.devices.length > 1 && !remoteCamera.stream ? (
             <label className={styles.field} htmlFor="camera-device">
               <span>Pilih kamera</span>
               <select
@@ -509,16 +553,18 @@ export function BoothSession() {
             </label>
           ) : null}
 
-          {camera.stream ? (
+          {activeCameraStream ? (
             <div className={styles.cameraControls}>
-              <button
-                className={styles.secondaryButton}
-                type="button"
-                onClick={() => void camera.toggleFacingMode()}
-                disabled={camera.status === "requesting" || settingsLocked}
-              >
-                Balik kamera depan/belakang
-              </button>
+              {!remoteCamera.stream ? (
+                <button
+                  className={styles.secondaryButton}
+                  type="button"
+                  onClick={() => void camera.toggleFacingMode()}
+                  disabled={camera.status === "requesting" || settingsLocked}
+                >
+                  Balik kamera depan/belakang
+                </button>
+              ) : null}
               <button
                 className={styles.textButton}
                 type="button"
@@ -543,7 +589,15 @@ export function BoothSession() {
             </button>
           )}
 
-          {camera.stream && capture.photos.length === 0 ? (
+          <RemoteCameraPairing
+            pairing={remoteCamera}
+            disabled={
+              captureBusy || isPreparingCapture || capture.photos.length > 0
+            }
+            onStart={activateRemoteCamera}
+          />
+
+          {activeCameraStream && capture.photos.length === 0 ? (
             <button
               className={`${styles.primaryButton} ${styles.startSessionButton}`}
               type="button"

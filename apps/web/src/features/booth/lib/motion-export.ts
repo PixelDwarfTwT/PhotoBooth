@@ -3,6 +3,7 @@ import type {
   applyPalette,
   quantize,
 } from "gifenc";
+import { getMotionFilterCss, type MotionFilter } from "./export-presets";
 
 const RECORDER_MIME_CANDIDATES = [
   "video/webm;codecs=vp9",
@@ -157,7 +158,10 @@ export function collectRecorderBlob(
   });
 }
 
-export async function createLoopGif(source: HTMLCanvasElement): Promise<Blob> {
+export async function createLoopGif(
+  source: HTMLCanvasElement,
+  options: { filter?: MotionFilter } = {},
+): Promise<Blob> {
   if (source.width < 1 || source.height < 1) {
     throw new Error("Photo strip belum siap untuk dibuat menjadi GIF.");
   }
@@ -199,6 +203,7 @@ export async function createLoopGif(source: HTMLCanvasElement): Promise<Blob> {
       const frameScale = getLoopScale(frameIndex, GIF_FRAME_COUNT);
       const drawWidth = width * frameScale;
       const drawHeight = height * frameScale;
+      context.filter = getMotionFilterCss(options.filter ?? "normal");
       context.drawImage(
         source,
         (width - drawWidth) / 2,
@@ -206,6 +211,7 @@ export async function createLoopGif(source: HTMLCanvasElement): Promise<Blob> {
         drawWidth,
         drawHeight,
       );
+      context.filter = "none";
       const pixels = context.getImageData(0, 0, width, height).data;
       totalPixelBytes += pixels.byteLength;
       if (totalPixelBytes > 40 * 1024 * 1024) {
@@ -258,7 +264,11 @@ export async function createLoopGif(source: HTMLCanvasElement): Promise<Blob> {
 
 export async function recordPhotoLoop(
   source: HTMLCanvasElement,
-  options: { durationMs?: number; signal?: AbortSignal } = {},
+  options: {
+    durationMs?: number;
+    signal?: AbortSignal;
+    filter?: MotionFilter;
+  } = {},
 ): Promise<Blob> {
   if (source.width < 1 || source.height < 1) {
     throw new Error("Photo strip belum siap untuk direkam.");
@@ -341,6 +351,7 @@ export async function recordPhotoLoop(
     const drawHeight = canvas.height * zoom;
     context.fillStyle = "#fffaf7";
     context.fillRect(0, 0, canvas.width, canvas.height);
+    context.filter = getMotionFilterCss(options.filter ?? "normal");
     context.drawImage(
       source,
       (canvas.width - drawWidth) / 2,
@@ -348,6 +359,7 @@ export async function recordPhotoLoop(
       drawWidth,
       drawHeight,
     );
+    context.filter = "none";
     if (elapsed >= durationMs) {
       stopRecorder();
       return;

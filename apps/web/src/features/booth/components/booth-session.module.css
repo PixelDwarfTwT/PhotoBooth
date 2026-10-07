@@ -1055,6 +1055,10 @@
   gap: 8px;
 }
 
+.exportActions > button {
+  width: 100%;
+}
+
 .motionActions {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
@@ -1063,6 +1067,106 @@
 
 .exportActions .secondaryButton {
   width: 100%;
+}
+
+.resultPreviews {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--surface);
+}
+
+.resultPreviews h3 {
+  margin: 0 0 12px;
+  font-size: 1rem;
+}
+
+.resultPreviewGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+  gap: 12px;
+}
+
+.resultPreviewCard {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--surface-inset);
+}
+
+.resultPreviewCard figcaption {
+  color: var(--ink);
+  font-size: 0.75rem;
+  font-weight: 750;
+}
+
+.resultPreviewCard img,
+.resultPreviewCard video {
+  display: block;
+  width: 100%;
+  max-height: 340px;
+  border-radius: 8px;
+  background: #f0e8ec;
+  object-fit: contain;
+}
+
+.resultPreviewCard .storyStillPreview {
+  aspect-ratio: 9 / 16;
+  padding: 14px;
+  background: #fffaf7;
+}
+
+.previewPlaceholder {
+  display: grid;
+  min-height: 180px;
+  place-items: center;
+  border-radius: 8px;
+  background: #f0e8ec;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.printOnly {
+  display: none;
+}
+
+@media print {
+  @page {
+    margin: 10mm;
+  }
+
+  :global(body *) {
+    visibility: hidden !important;
+  }
+
+  .printOnly,
+  .printOnly * {
+    visibility: visible !important;
+  }
+
+  .printOnly {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 2147483647 !important;
+    display: grid !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    place-items: center !important;
+    padding: 8mm !important;
+    background: #fff !important;
+  }
+
+  .printOnly img {
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
 }
 
 .exportStatus {
@@ -1076,6 +1180,148 @@
   justify-self: start;
   width: auto;
   padding-inline: 8px;
+}
+
+.remoteCameraButton {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 8px;
+  padding: 8px 13px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: var(--surface-raised);
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.remoteCameraButton:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.remoteCameraButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.remoteCameraButton:focus-visible,
+.remoteCameraClose:focus-visible,
+.remoteCameraActions button:focus-visible,
+.remoteCameraPhoneLink:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.remoteCameraDialog {
+  width: min(100% - 28px, 470px);
+  max-height: min(88svh, 780px);
+  overflow: auto;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 20px 70px rgb(55 28 40 / 22%);
+}
+
+.remoteCameraDialog::backdrop {
+  background: rgb(34 24 30 / 62%);
+}
+
+.remoteCameraDialogHeader {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.remoteCameraDialogHeader h2 {
+  margin: 0;
+  font-size: clamp(1.3rem, 5vw, 1.75rem);
+  letter-spacing: -0.045em;
+}
+
+.remoteCameraClose {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface-raised);
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: 1.4rem;
+}
+
+.remoteCameraInstructions,
+.remoteCameraPrivacy,
+.remoteCameraStatus,
+.remoteCameraPhoneLink,
+.remoteCameraError {
+  display: block;
+  margin: 13px 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.55;
+}
+
+.remoteCameraQr,
+.remoteCameraQrPlaceholder {
+  display: grid;
+  width: min(100%, 250px);
+  aspect-ratio: 1;
+  margin: 17px auto 0;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: #fff;
+  object-fit: contain;
+}
+
+.remoteCameraQrPlaceholder {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.remoteCameraPhoneLink {
+  margin-top: 10px;
+  color: var(--accent);
+  font-weight: 750;
+  text-align: center;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.remoteCameraStatus {
+  color: var(--ink);
+  font-weight: 750;
+  text-align: center;
+}
+
+.remoteCameraError {
+  padding: 10px 12px;
+  border: 1px solid var(--danger-border);
+  border-radius: 11px;
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.remoteCameraPrivacy {
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 0.73rem;
+}
+
+.remoteCameraActions {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
 }
 
 @media (min-width: 760px) {

@@ -34,6 +34,8 @@ Konfigurasi Blueprint ada di [render.yaml](../render.yaml). Blueprint membuat sa
 
 Render Free dapat lambat pada request pertama setelah idle. Batas dan perilakunya dapat berubah; periksa [dokumentasi Free Render](https://render.com/docs/free) sebelum mengandalkannya.
 
+Pairing kamera ponsel menyimpan signaling sementara di memori API. Jalankan API sebagai satu instance agar permintaan QR yang sama selalu mencapai instance yang sama. Jangan menambah replica di belakang load balancer sebelum signaling dipindahkan ke penyimpanan bersama; WebRTC saat ini memakai STUN dan jaringan tertentu mungkin memerlukan TURN.
+
 ## 3. Deploy web ke Vercel
 
 Konfigurasi build ada di [apps/web/vercel.json](../apps/web/vercel.json). Saat membuat Project Vercel dari repo `photobooth`:
@@ -56,7 +58,7 @@ Konfigurasi build ada di [apps/web/vercel.json](../apps/web/vercel.json). Saat m
 
 1. `https://<layanan-api>.onrender.com/api/health` harus merespons `ok: true`.
 2. `https://<layanan-api>.onrender.com/api/capabilities` harus menunjukkan sharing cloud nonaktif selama S3 belum diisi.
-3. Buka `https://<domain-web-staging>/booth`, izinkan kamera, ambil empat foto, periksa frame, lalu unduh PNG dan JPG.
+3. Buka `https://<domain-web-staging>/booth`, pindai QR dari ponsel, izinkan kamera di kedua perangkat, lalu ambil tepat tiga foto. Periksa hasil frame, filter video, ekspor Story 9:16, unduh PNG/JPG/GIF, dan buka dialog cetak.
 4. Pastikan frame Supabase Storage dapat dibaca Canvas dari origin Vercel. Bucket aset publik harus memberi header CORS yang mengizinkan domain staging.
 
 ## 5. Setelah staging

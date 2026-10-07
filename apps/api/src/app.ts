@@ -11,9 +11,11 @@ import type {
 import { registerAdminUserRoutes } from "./routes/admin-users.js";
 import { registerCatalogRoutes } from "./routes/catalog.js";
 import { registerHealthRoute } from "./routes/health.js";
+import { registerRemoteCameraRoutes } from "./routes/remote-camera.js";
 import { registerShareRoutes } from "./routes/shares.js";
 import type { CatalogRouteServices } from "./services/catalog-service.js";
 import type { createShareService } from "./services/share-service.js";
+import { RemoteCameraRegistry } from "./services/remote-camera-registry.js";
 
 export interface ApiRouteServices {
   catalog: CatalogRouteServices;
@@ -27,6 +29,7 @@ export interface ApiRouteServices {
 export function buildServer(
   environment: ApiEnvironment = loadApiEnvironment(),
   services?: ApiRouteServices,
+  remoteCameraRegistry = new RemoteCameraRegistry(),
 ) {
   const app = Fastify({
     bodyLimit: environment.shareMaxBytes,
@@ -46,6 +49,8 @@ export function buildServer(
       ],
     },
   });
+  const stopRemoteCameraSweeper = remoteCameraRegistry.startSweeper();
+  app.addHook("onClose", async () => stopRemoteCameraSweeper());
 
   void app.register(cors, {
     origin: environment.webOrigin,
@@ -80,6 +85,10 @@ export function buildServer(
   });
 
   void app.register(registerHealthRoute);
+  void app.register(registerRemoteCameraRoutes, {
+    registry: remoteCameraRegistry,
+    webOrigin: environment.webOrigin,
+  });
 
   if (services) {
     void app.register(registerCatalogRoutes, {
