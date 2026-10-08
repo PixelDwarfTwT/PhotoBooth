@@ -88,7 +88,17 @@ export interface ApiEnvironment {
 export function parseApiEnvironment(
   source: NodeJS.ProcessEnv = process.env,
 ): ApiEnvironment {
-  const parsed = RawApiEnvironmentSchema.safeParse(source);
+  const vercelWebHost =
+    source.VERCEL_ENV === "production"
+      ? source.VERCEL_PROJECT_PRODUCTION_URL || source.VERCEL_URL
+      : source.VERCEL_URL;
+  const deploymentWebOrigin =
+    source.WEB_ORIGIN?.trim() ||
+    (vercelWebHost ? `https://${vercelWebHost}` : undefined);
+  const parsed = RawApiEnvironmentSchema.safeParse({
+    ...source,
+    WEB_ORIGIN: deploymentWebOrigin,
+  });
 
   if (!parsed.success) {
     const reasons = parsed.error.issues
@@ -122,7 +132,12 @@ export function parseApiEnvironment(
     );
   }
 
-  if (raw.NODE_ENV === "production" && !source["WEB_ORIGIN"]) {
+  if (
+    raw.NODE_ENV === "production" &&
+    !source["WEB_ORIGIN"] &&
+    !source["VERCEL_URL"] &&
+    !source["VERCEL_PROJECT_PRODUCTION_URL"]
+  ) {
     throw new Error(
       "Invalid API configuration. Production WEB_ORIGIN must be configured explicitly.",
     );

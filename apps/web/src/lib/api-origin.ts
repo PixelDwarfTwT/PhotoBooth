@@ -20,12 +20,12 @@ export function getApiOrigin(
   configured: string | undefined,
   environment: string | undefined,
 ): string | null {
+  if (configured === "") return "";
   const normalized = normalizeApiOrigin(configured);
   if (normalized) return normalized;
   return environment === "development" ? "http://127.0.0.1:4000" : null;
 }
 
-export const API_ORIGIN = getApiOrigin(
-  process.env.NEXT_PUBLIC_API_ORIGIN,
-  process.env.NODE_ENV,
-);
+export const API_ORIGIN =
+  getApiOrigin(process.env.NEXT_PUBLIC_API_ORIGIN, process.env.NODE_ENV) ??
+  (process.env.NODE_ENV === "production" ? "" : null);

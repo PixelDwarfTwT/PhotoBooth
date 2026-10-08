@@ -4,6 +4,8 @@ import { SiteFooter, SiteHeader } from "@/components/site-navigation";
 import { getPublishedThemes } from "@/lib/public-catalog";
 import styles from "../public-pages.module.css";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Tema photo strip",
   description:

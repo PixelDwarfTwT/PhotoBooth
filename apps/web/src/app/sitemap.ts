@@ -1,6 +1,8 @@
 import type { MetadataRoute } from "next";
 import { getPublishedThemes, SITE_ORIGIN } from "@/lib/public-catalog";
 
+export const dynamic = "force-dynamic";
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const publicRoutes = ["", "/themes", "/guide", "/privacy", "/help"];
   const staticEntries = publicRoutes.map((route) => ({

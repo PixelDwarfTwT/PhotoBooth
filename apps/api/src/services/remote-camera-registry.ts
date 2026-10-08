@@ -5,6 +5,10 @@ const SESSION_SWEEP_INTERVAL_MS = 60_000;
 const DEFAULT_MAX_SESSIONS = 256;
 const DEFAULT_MAX_SDP_BYTES = 4 * 1024 * 1024;
 
+export const REMOTE_CAMERA_SESSION_TTL_MS = SESSION_TTL_MS;
+export const REMOTE_CAMERA_MAX_SESSIONS = DEFAULT_MAX_SESSIONS;
+export const REMOTE_CAMERA_MAX_SDP_BYTES = DEFAULT_MAX_SDP_BYTES;
+
 export interface SessionDescription {
   type: "offer" | "answer";
   sdp: string;
@@ -19,6 +23,26 @@ export interface RemoteCameraSession {
 
 export type SessionWriteResult =
   "created" | "conflict" | "not-found" | "capacity";
+
+type MaybePromise<T> = T | Promise<T>;
+
+export interface RemoteCameraSessionStore {
+  create(): MaybePromise<Pick<
+    RemoteCameraSession,
+    "sessionId" | "expiresAt"
+  > | null>;
+  get(sessionId: string): MaybePromise<RemoteCameraSession | null>;
+  setOffer(
+    sessionId: string,
+    offer: SessionDescription,
+  ): MaybePromise<SessionWriteResult>;
+  setAnswer(
+    sessionId: string,
+    answer: SessionDescription,
+  ): MaybePromise<SessionWriteResult>;
+  close(sessionId: string): MaybePromise<boolean>;
+  startSweeper?: () => () => void;
+}
 
 interface RegistryOptions {
   now?: () => number;

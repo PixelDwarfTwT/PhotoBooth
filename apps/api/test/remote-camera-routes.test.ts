@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildServer } from "../src/app.js";
+import { buildServer } from "../src/server-factory.js";
 import { parseApiEnvironment } from "../src/config/env.js";
 import { RemoteCameraRegistry } from "../src/services/remote-camera-registry.js";
 

@@ -25,7 +25,7 @@ function abortError(): DOMException {
 }
 
 function deletePairing(sessionId: string): void {
-  if (!API_ORIGIN) return;
+  if (API_ORIGIN === null) return;
   void fetch(`${API_ORIGIN}${SESSION_ENDPOINT}/${sessionId}`, {
     method: "DELETE",
     cache: "no-store",
@@ -167,7 +167,7 @@ export function RemoteCameraPage({ sessionId }: { sessionId: string }) {
       setError("Tautan kamera tidak valid. Pindai QR baru dari booth.");
       return;
     }
-    if (!API_ORIGIN) {
+    if (API_ORIGIN === null) {
       setState("error");
       setError("API pairing kamera belum dikonfigurasi.");
       return;

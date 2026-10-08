@@ -15,7 +15,10 @@ import { registerRemoteCameraRoutes } from "./routes/remote-camera.js";
 import { registerShareRoutes } from "./routes/shares.js";
 import type { CatalogRouteServices } from "./services/catalog-service.js";
 import type { createShareService } from "./services/share-service.js";
-import { RemoteCameraRegistry } from "./services/remote-camera-registry.js";
+import {
+  RemoteCameraRegistry,
+  type RemoteCameraSessionStore,
+} from "./services/remote-camera-registry.js";
 
 export interface ApiRouteServices {
   catalog: CatalogRouteServices;
@@ -29,7 +32,7 @@ export interface ApiRouteServices {
 export function buildServer(
   environment: ApiEnvironment = loadApiEnvironment(),
   services?: ApiRouteServices,
-  remoteCameraRegistry = new RemoteCameraRegistry(),
+  remoteCameraRegistry: RemoteCameraSessionStore = new RemoteCameraRegistry(),
 ) {
   const app = Fastify({
     bodyLimit: environment.shareMaxBytes,
@@ -49,8 +52,10 @@ export function buildServer(
       ],
     },
   });
-  const stopRemoteCameraSweeper = remoteCameraRegistry.startSweeper();
-  app.addHook("onClose", async () => stopRemoteCameraSweeper());
+  const stopRemoteCameraSweeper = remoteCameraRegistry.startSweeper?.();
+  if (stopRemoteCameraSweeper) {
+    app.addHook("onClose", async () => stopRemoteCameraSweeper());
+  }
 
   void app.register(cors, {
     origin: environment.webOrigin,
@@ -78,7 +83,20 @@ export function buildServer(
   app.setErrorHandler((error, request, reply) => {
     const mapped = mapApiError(error);
     if (mapped.statusCode >= 500) {
-      request.log.error({ code: mapped.body.error.code }, "API request failed");
+      const errorCode =
+        error && typeof error === "object" && "code" in error
+          ? String(error.code)
+          : undefined;
+      request.log.error(
+        {
+          code: mapped.body.error.code,
+          errorName: error instanceof Error ? error.name : "UnknownError",
+          ...(errorCode && /^[A-Z0-9_]+$/.test(errorCode)
+            ? { errorCode }
+            : {}),
+        },
+        "API request failed",
+      );
     }
 
     return reply.status(mapped.statusCode).send(mapped.body);

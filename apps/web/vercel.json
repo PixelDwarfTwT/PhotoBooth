@@ -1,4 +1,0 @@
-{
-  "buildCommand": "cd ../.. && corepack pnpm --filter @photobooth/contracts build && corepack pnpm --filter @photobooth/db build && corepack pnpm --filter @photobooth/web build",
-  "outputDirectory": ".next"
-}

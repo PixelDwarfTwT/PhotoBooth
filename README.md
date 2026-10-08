@@ -30,7 +30,7 @@ corepack pnpm db:migrate
 corepack pnpm dev
 ```
 
-The web app runs at `http://localhost:3000`; the API runs at `http://127.0.0.1:4000`. Next.js and the API load the root `.env`. `NEXT_PUBLIC_API_ORIGIN` and `NEXT_PUBLIC_SITE_URL` are embedded during the web build, so set the correct public values before building for deployment; production builds require both to be explicit HTTPS URLs. The default database credentials are only for local development.
+The web app runs at `http://localhost:3000`; the API runs at `http://127.0.0.1:4000`. Next.js and the API load the root `.env`. `NEXT_PUBLIC_API_ORIGIN` and `NEXT_PUBLIC_SITE_URL` are embedded during the web build. For a Vercel multi-service deployment, the browser uses same-domain `/api/*` routing; Vercel's deployment or production domain supplies the site origin. Other split-host deployments should set both public origins to HTTPS URLs. The default database credentials are only for local development.
 
 ### Use Supabase for PostgreSQL
 
@@ -56,7 +56,7 @@ Use a separate Supabase project for development so local migration work cannot a
 | `DATABASE_URL`                                                       | Local PostgreSQL URL    | API and Prisma database connection; required to start the API                                 |
 | `HOST`, `PORT`                                                       | `127.0.0.1`, `4000`     | API bind address and port                                                                     |
 | `WEB_ORIGIN`                                                         | `http://localhost:3000` | Allowed browser origin and origin used to form temporary share links; use HTTPS in production |
-| `NEXT_PUBLIC_API_ORIGIN`, `NEXT_PUBLIC_SITE_URL`                     | Local web/API URLs      | Public API and canonical site origins; set before building the web app                        |
+| `NEXT_PUBLIC_API_ORIGIN`, `NEXT_PUBLIC_SITE_URL`                     | Local web/API URLs      | Public API and canonical site origins; Vercel can route `/api/*` on the same domain           |
 | `SHARE_CONSENT_VERSION`                                              | `2026-10-02`            | Consent version the API expects from an upload                                                |
 | `SHARE_TTL_HOURS`                                                    | `72`                    | Temporary share lifetime, from 1 to 720 hours                                                 |
 | `SHARE_MAX_BYTES`                                                    | `10485760`              | Upload size cap, from 1 KiB to 10 MiB                                                         |
@@ -66,6 +66,10 @@ Use a separate Supabase project for development so local migration work cannot a
 | `ASSET_PUBLIC_BASE_URL`                                              | Empty                   | Optional public HTTPS base for catalog frame assets                                           |
 
 Published catalog pages start empty until themes and related records are added. The editor includes local frame and filter choices as a fallback. Catalog asset files are hosted separately and referenced by metadata; the API does not provide an asset upload endpoint or a visual admin CMS.
+
+## Vercel deployment
+
+The repository root [vercel.json](vercel.json) configures the `web` and `api` services, routes `/api/*` to Fastify, and uses a private service binding for server-rendered catalog requests. Keep the Vercel project root at the repository root. Setup and environment details are in [docs/staging-deployment.md](docs/staging-deployment.md).
 
 ### Admin credentials
 

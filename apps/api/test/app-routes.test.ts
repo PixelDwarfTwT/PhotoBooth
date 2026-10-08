@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildServer } from "../src/app.ts";
+import { buildServer } from "../src/server-factory.ts";
 import { parseApiEnvironment } from "../src/config/env.ts";
 
 test("buildServer mounts catalog, admin, and sharing endpoints", async () => {

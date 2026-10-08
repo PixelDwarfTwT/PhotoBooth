@@ -66,7 +66,7 @@ export function ShareControls({ canvasRef, disabled }: ShareControlsProps) {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!API_ORIGIN) {
+    if (API_ORIGIN === null) {
       setCapabilityStatus("unavailable");
       return;
     }
@@ -158,7 +158,7 @@ export function ShareControls({ canvasRef, disabled }: ShareControlsProps) {
       !capabilities?.cloudSharingEnabled ||
       !consentChecked ||
       busy ||
-      !API_ORIGIN
+      API_ORIGIN === null
     ) {
       return;
     }
@@ -215,7 +215,7 @@ export function ShareControls({ canvasRef, disabled }: ShareControlsProps) {
   }
 
   async function revokeShare(): Promise<void> {
-    if (!share || !API_ORIGIN || busy) return;
+    if (!share || API_ORIGIN === null || busy) return;
     const path = sharePath(share.shareUrl);
     if (!path) {
       setError("Alamat tautan tidak dapat diverifikasi.");

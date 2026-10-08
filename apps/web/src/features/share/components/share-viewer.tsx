@@ -44,7 +44,7 @@ export function ShareViewer({ token }: ShareViewerProps) {
       setError("Format tautan tidak valid.");
       return () => controller.abort();
     }
-    if (!API_ORIGIN) {
+    if (API_ORIGIN === null) {
       setError("Layanan tautan sementara belum dikonfigurasi.");
       return () => controller.abort();
     }

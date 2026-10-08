@@ -11,6 +11,7 @@ validateProductionPublicOrigins();
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  env: process.env.VERCEL === "1" ? { NEXT_PUBLIC_API_ORIGIN: "" } : undefined,
   transpilePackages: ["@photobooth/contracts"],
   async headers() {
     return [

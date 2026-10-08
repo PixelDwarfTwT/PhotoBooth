@@ -1,0 +1,41 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "services": {
+    "api": {
+      "root": "apps/api",
+      "framework": "fastify",
+      "installCommand": "cd ../.. && corepack pnpm install --frozen-lockfile && corepack pnpm --filter @photobooth/contracts build && corepack pnpm --filter @photobooth/db build",
+      "buildCommand": "corepack pnpm run build",
+      "outputDirectory": "public"
+    },
+    "web": {
+      "root": "apps/web",
+      "framework": "nextjs",
+      "installCommand": "cd ../.. && corepack pnpm install --frozen-lockfile",
+      "buildCommand": "cd ../.. && corepack pnpm --filter @photobooth/contracts build && corepack pnpm --filter @photobooth/db build && corepack pnpm --filter @photobooth/web build",
+      "outputDirectory": ".next",
+      "bindings": [
+        {
+          "type": "service",
+          "service": "api",
+          "format": "url",
+          "env": "API_SERVICE_URL"
+        }
+      ]
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": {
+        "service": "api"
+      }
+    },
+    {
+      "source": "/(.*)",
+      "destination": {
+        "service": "web"
+      }
+    }
+  ]
+}

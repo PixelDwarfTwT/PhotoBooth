@@ -141,7 +141,7 @@ async function pollForAnswer(
 }
 
 async function deletePairing(sessionId: string): Promise<void> {
-  if (!API_ORIGIN) return;
+  if (API_ORIGIN === null) return;
   await fetch(`${API_ORIGIN}${SESSION_ENDPOINT}/${sessionId}`, {
     method: "DELETE",
     cache: "no-store",
@@ -182,7 +182,7 @@ export function useRemoteCameraHost(): RemoteCameraHostController {
     sessionIdRef.current = null;
     if (previousSessionId) void deletePairing(previousSessionId);
     setStream(null);
-    if (!API_ORIGIN) {
+    if (API_ORIGIN === null) {
       setState("error");
       setError("API pairing kamera belum dikonfigurasi.");
       return;

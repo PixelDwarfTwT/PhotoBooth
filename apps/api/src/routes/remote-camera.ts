@@ -3,7 +3,8 @@ import type { FastifyPluginAsync } from "fastify";
 import QRCode from "qrcode";
 import { HttpApiError } from "../lib/api-error.js";
 import {
-  RemoteCameraRegistry,
+  type RemoteCameraSessionStore,
+  type RemoteCameraSession,
   type SessionDescription,
   type SessionWriteResult,
 } from "../services/remote-camera-registry.js";
@@ -32,7 +33,7 @@ const answerSchema = z
   .strict();
 
 interface RemoteCameraRouteOptions {
-  registry: RemoteCameraRegistry;
+  registry: RemoteCameraSessionStore;
   webOrigin: string;
 }
 
@@ -67,8 +68,11 @@ function readDescription(
   return parsed.data;
 }
 
-function requireSession(registry: RemoteCameraRegistry, sessionId: string) {
-  const session = registry.get(sessionId);
+async function requireSession(
+  registry: RemoteCameraSessionStore,
+  sessionId: string,
+): Promise<RemoteCameraSession> {
+  const session = await registry.get(sessionId);
   if (!session) {
     throw new HttpApiError(
       404,
@@ -119,7 +123,7 @@ export const registerRemoteCameraRoutes: FastifyPluginAsync<
       if (request.body !== undefined && request.body !== null) {
         throw invalidRequest("Pembuatan sesi tidak menerima data tambahan.");
       }
-      const session = registry.create();
+      const session = await registry.create();
       if (!session) {
         throw new HttpApiError(
           503,
@@ -159,7 +163,7 @@ export const registerRemoteCameraRoutes: FastifyPluginAsync<
     async (request, reply) => {
       const sessionId = readSessionId(request.params);
       const offer = readDescription(request.body, "offer");
-      handleWriteResult(registry.setOffer(sessionId, offer));
+      handleWriteResult(await registry.setOffer(sessionId, offer));
       return reply.code(204).send();
     },
   );
@@ -170,7 +174,10 @@ export const registerRemoteCameraRoutes: FastifyPluginAsync<
       config: { rateLimit: { max: 120, timeWindow: "1 minute" } },
     },
     async (request, reply) => {
-      const session = requireSession(registry, readSessionId(request.params));
+      const session = await requireSession(
+        registry,
+        readSessionId(request.params),
+      );
       if (!session.offer) return reply.code(204).send();
       return reply.send(session.offer);
     },
@@ -185,7 +192,7 @@ export const registerRemoteCameraRoutes: FastifyPluginAsync<
     async (request, reply) => {
       const sessionId = readSessionId(request.params);
       const answer = readDescription(request.body, "answer");
-      handleWriteResult(registry.setAnswer(sessionId, answer));
+      handleWriteResult(await registry.setAnswer(sessionId, answer));
       return reply.code(204).send();
     },
   );
@@ -196,7 +203,10 @@ export const registerRemoteCameraRoutes: FastifyPluginAsync<
       config: { rateLimit: { max: 120, timeWindow: "1 minute" } },
     },
     async (request, reply) => {
-      const session = requireSession(registry, readSessionId(request.params));
+      const session = await requireSession(
+        registry,
+        readSessionId(request.params),
+      );
       if (!session.answer) return reply.code(204).send();
       return reply.send(session.answer);
     },
@@ -206,7 +216,7 @@ export const registerRemoteCameraRoutes: FastifyPluginAsync<
     "/api/remote-camera/sessions/:sessionId",
     async (request, reply) => {
       const sessionId = readSessionId(request.params);
-      if (!registry.close(sessionId)) {
+      if (!(await registry.close(sessionId))) {
         throw new HttpApiError(
           404,
           "pairing_not_found",

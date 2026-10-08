@@ -143,7 +143,7 @@ export function BoothSession() {
   const currentPoseGuide = poseGuides[poseGuideIndex % poseGuides.length];
 
   useEffect(() => {
-    if (!API_ORIGIN) return;
+    if (API_ORIGIN === null) return;
     const controller = new AbortController();
     void fetch(`${API_ORIGIN}/api/pose-guides`, { signal: controller.signal })
       .then(async (response) => {

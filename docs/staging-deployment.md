@@ -1,71 +1,56 @@
-# Staging dengan Vercel, Render, dan Supabase
+# Deploy the PhotoBooth services to Vercel
 
-## Keputusan hosting
+The repository root `vercel.json` defines one Vercel project with two services:
 
-- **Vercel Hobby** untuk Next.js, untuk preview pribadi/nonkomersial. Persyaratan penggunaan Hobby adalah personal/nonkomersial; bila aplikasi dipakai secara komersial, pilih plan yang sesuai sebelum peluncuran.
-- **Render Free** untuk API Fastify staging. Layanan gratis tidur setelah 15 menit tanpa trafik dan dapat memerlukan sekitar satu menit untuk bangun kembali. Render menyatakan Free ditujukan untuk eksperimen/staging, bukan produksi.
-- **Supabase PostgreSQL** tetap menjadi database. Buat project staging terpisah agar tes migrasi tidak mengubah data project lain.
+- `api`: Fastify, public under `/api/*`.
+- `web`: Next.js, public for all remaining paths.
 
-Lihat [batas Render Free](https://render.com/docs/free) dan [ketentuan plan Vercel](https://vercel.com/pricing).
+The `web` service binds to `api` as `API_SERVICE_URL` for server-rendered catalog requests. Browser requests use the public same-domain `/api/*` rewrite. Vercel Services are currently in beta; confirm the feature is available for the Vercel account before creating the project.
 
-## 1. Siapkan Supabase staging
+## 1. Prepare Supabase
 
-1. Buat atau pilih project Supabase khusus staging.
-2. Ambil connection string PostgreSQL dari **Connect**. Ikuti README bila perlu memakai Session Pooler pada port `5432`.
-3. Dari PowerShell di root repo, tetapkan URL itu sementara pada sesi terminal, lalu terapkan migrasi:
+1. Use the intended Supabase project and copy its PostgreSQL connection string from **Connect**. Keep it server-side; do not prefix it with `NEXT_PUBLIC_`.
+2. Apply the repository migrations to that database from the project root before deploying the API:
 
    ```powershell
-   $env:DATABASE_URL = "<connection-string-staging>"
+   $env:DATABASE_URL = "<connection-string>"
    corepack pnpm --filter @photobooth/db exec prisma migrate deploy
    Remove-Item Env:DATABASE_URL
    ```
 
-   Jalankan perintah hanya setelah memeriksa bahwa URL tersebut menunjuk ke project staging. Jangan menaruh URL itu di Git atau variabel `NEXT_PUBLIC_*`.
+   Check the project ref in the connection string before running the migration command.
 
-## 2. Deploy API ke Render
+## 2. Create the Vercel project
 
-Konfigurasi Blueprint ada di [render.yaml](../render.yaml). Blueprint membuat satu Node web service di region Singapore dengan health check `/api/health`. Render menerima trafik publik bila proses mengikat `HOST=0.0.0.0` dan `PORT` yang disediakan platform.
-
-1. Setelah perubahan ini tersedia di GitHub, buka Render Dashboard → **New** → **Blueprint** dan hubungkan repo `photobooth`.
-2. Pilih `render.yaml`; saat diminta, isi `DATABASE_URL` dengan URL Supabase staging.
-3. Isi `WEB_ORIGIN` sementara dengan origin HTTPS Vercel yang akan digunakan. Setelah domain Vercel diketahui, perbarui nilai ini agar sama persis dengan origin web.
-4. Biarkan seluruh variabel S3 tidak disetel supaya cloud sharing tetap nonaktif.
-5. Pastikan deploy sehat di `https://<layanan-api>.onrender.com/api/health`.
-
-Render Free dapat lambat pada request pertama setelah idle. Batas dan perilakunya dapat berubah; periksa [dokumentasi Free Render](https://render.com/docs/free) sebelum mengandalkannya.
-
-Pairing kamera ponsel menyimpan signaling sementara di memori API. Jalankan API sebagai satu instance agar permintaan QR yang sama selalu mencapai instance yang sama. Jangan menambah replica di belakang load balancer sebelum signaling dipindahkan ke penyimpanan bersama; WebRTC saat ini memakai STUN dan jaringan tertentu mungkin memerlukan TURN.
-
-## 3. Deploy web ke Vercel
-
-Konfigurasi build ada di [apps/web/vercel.json](../apps/web/vercel.json). Saat membuat Project Vercel dari repo `photobooth`:
-
-1. Pilih root directory `apps/web` dan framework Next.js.
-2. Gunakan install command default pnpm; build command proyek sudah menyiapkan package workspace lalu membangun Next.js.
-3. Atur environment untuk Preview dan Production:
+1. Import the GitHub repository `PixelDwarfTwT/PhotoBooth` into Vercel.
+2. Keep **Root Directory** set to the repository root (`.`). The service roots and build commands are already configured in `vercel.json`; do not create separate Vercel projects for `apps/web` and `apps/api`.
+3. Enable Vercel **System Environment Variables** so the runtime and build receive `VERCEL` and `VERCEL_URL`.
+4. Add the server environment variables for Preview and Production as needed:
 
    ```text
-   NEXT_PUBLIC_SITE_URL=https://<domain-web-staging>
-   NEXT_PUBLIC_API_ORIGIN=https://<layanan-api>.onrender.com
+   DATABASE_URL=<Supabase PostgreSQL connection string>
    ```
 
-   Nilai `NEXT_PUBLIC_*` disematkan saat build. Perubahan nilainya memerlukan build/deploy ulang.
+   Optional API values include `SHARE_CONSENT_VERSION`, `SHARE_TTL_HOURS`, `SHARE_MAX_BYTES`, and `SHARE_RATE_LIMIT_MAX`. To keep cloud sharing disabled, leave all S3 variables unset. To enable it later, add the complete S3 credentials to the API service environment only.
 
-4. Setelah Vercel memberi domain final, perbarui `WEB_ORIGIN` di Render ke origin itu dan deploy ulang API.
-5. Gunakan [dokumentasi monorepo Vercel](https://vercel.com/docs/monorepos) bila pengaturan workspace perlu disesuaikan.
+5. Do not create `API_SERVICE_URL` yourself. The web service binding injects it at runtime; it is not available during builds or in browser code.
+6. `NEXT_PUBLIC_SITE_URL` is optional on Vercel. Set it to the chosen HTTPS canonical origin if you use a custom domain. Otherwise the site uses Vercel's generated deployment URL. `NEXT_PUBLIC_API_ORIGIN` is not needed for this single-domain setup; only set it when deliberately pointing the web client at a separate API origin.
+7. `WEB_ORIGIN` is also optional on Vercel. If unset, the API builds share and phone-camera links from the deployment's `VERCEL_URL`. Set it only when links should use a specific HTTPS origin; scope a production custom domain value to Production so Preview links remain on their preview deployment.
 
-## 4. Verifikasi staging
+## 3. Deploy and check routes
 
-1. `https://<layanan-api>.onrender.com/api/health` harus merespons `ok: true`.
-2. `https://<layanan-api>.onrender.com/api/capabilities` harus menunjukkan sharing cloud nonaktif selama S3 belum diisi.
-3. Buka `https://<domain-web-staging>/booth`, pindai QR dari ponsel, izinkan kamera di kedua perangkat, lalu ambil tepat tiga foto. Periksa hasil frame, filter video, ekspor Story 9:16, unduh PNG/JPG/GIF, dan buka dialog cetak.
-4. Pastikan frame Supabase Storage dapat dibaca Canvas dari origin Vercel. Bucket aset publik harus memberi header CORS yang mengizinkan domain staging.
+Deploy from the Vercel dashboard or Git push after reviewing the environment scopes. Confirm these URLs on the assigned project domain:
 
-## 5. Setelah staging
+- `/` loads the PhotoBooth web service.
+- `/api/health` returns a healthy API response.
+- `/api/capabilities` reports cloud sharing disabled while S3 is unset.
+- `/booth` can load frame and filter catalog data from Supabase.
+- `/themes` can load published themes through the web-to-API service binding.
 
-- Untuk produksi, gunakan compute API yang selalu aktif dan plan hosting yang sesuai dengan penggunaan aplikasi.
-- Sebelum mengaktifkan cloud sharing di Render, konfigurasi dan verifikasi Fastify `trustProxy` agar rate limit berbasis IP melihat alamat klien melalui reverse proxy dengan benar. Jangan mengaktifkan trust proxy secara luas tanpa memastikan header proxy hanya dipercaya dari platform.
-- Aktifkan cloud sharing hanya setelah bucket S3 kompatibel privat siap. Masukkan kredensialnya ke environment API saja.
-- Jika cloud sharing aktif, jadwalkan `corepack pnpm cleanup:shares` setidaknya sekali per jam pada worker tepercaya.
+Public frame assets still need a public HTTPS URL and compatible CORS headers for Canvas export. The API does not upload catalog images to Supabase Storage.
 
-Tidak ada kredensial hosting atau database di file konfigurasi ini. Secret diisi melalui dashboard hosting atau sesi terminal lokal dan tidak boleh di-commit.
+## Deployment limits to account for
+
+Remote camera signaling is stored in the shared `remote_camera_sessions` PostgreSQL table. The API migration must be applied before deployment; each session expires after five minutes and expired rows are removed as new sessions are created.
+
+The API allows uploads up to 10 MiB by default. Confirm Vercel's current Function request-body limits before relying on large cloud-share uploads; local exports do not use the API.

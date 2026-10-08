@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "cd ../.. && corepack pnpm install --frozen-lockfile && corepack pnpm --filter @photobooth/contracts build && corepack pnpm --filter @photobooth/db build",
+  "buildCommand": "corepack pnpm run build",
+  "outputDirectory": "public",
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index?__vercel_api_path=/api/$1"
+    }
+  ]
+}

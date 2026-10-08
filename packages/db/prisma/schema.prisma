@@ -33,16 +33,16 @@ enum AdminRole {
 }
 
 model Theme {
-  id                String      @id @default(uuid()) @db.Uuid
-  name              String      @db.VarChar(120)
-  slug              String      @unique @db.VarChar(160)
-  description       String      @db.Text
-  thumbnailAssetId  String?     @map("thumbnail_asset_id") @db.Uuid
-  startsAt          DateTime?   @map("starts_at") @db.Timestamptz(3)
-  endsAt            DateTime?   @map("ends_at") @db.Timestamptz(3)
-  status            ThemeStatus @default(DRAFT)
-  createdAt         DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt         DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id               String      @id @default(uuid()) @db.Uuid
+  name             String      @db.VarChar(120)
+  slug             String      @unique @db.VarChar(160)
+  description      String      @db.Text
+  thumbnailAssetId String?     @map("thumbnail_asset_id") @db.Uuid
+  startsAt         DateTime?   @map("starts_at") @db.Timestamptz(3)
+  endsAt           DateTime?   @map("ends_at") @db.Timestamptz(3)
+  status           ThemeStatus @default(DRAFT)
+  createdAt        DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   thumbnailAsset Asset?      @relation("ThemeThumbnail", fields: [thumbnailAssetId], references: [id], onDelete: SetNull)
   assets         Asset[]     @relation("ThemeAssets")
@@ -54,24 +54,24 @@ model Theme {
 }
 
 model Asset {
-  id          String        @id @default(uuid()) @db.Uuid
-  themeId     String?       @map("theme_id") @db.Uuid
-  assetType   AssetType     @map("asset_type")
-  storageKey  String        @unique @map("storage_key") @db.VarChar(512)
-  mimeType    String        @map("mime_type") @db.VarChar(100)
-  width       Int
-  height      Int
-  fileSizeBytes BigInt      @map("file_size_bytes")
-  altText     String        @map("alt_text") @db.VarChar(500)
-  licenseNote String        @map("license_note") @db.Text
-  sortOrder   Int           @default(0) @map("sort_order")
-  status      CatalogStatus @default(DRAFT)
+  id            String        @id @default(uuid()) @db.Uuid
+  themeId       String?       @map("theme_id") @db.Uuid
+  assetType     AssetType     @map("asset_type")
+  storageKey    String        @unique @map("storage_key") @db.VarChar(512)
+  mimeType      String        @map("mime_type") @db.VarChar(100)
+  width         Int
+  height        Int
+  fileSizeBytes BigInt        @map("file_size_bytes")
+  altText       String        @map("alt_text") @db.VarChar(500)
+  licenseNote   String        @map("license_note") @db.Text
+  sortOrder     Int           @default(0) @map("sort_order")
+  status        CatalogStatus @default(DRAFT)
 
-  theme                 Theme?      @relation("ThemeAssets", fields: [themeId], references: [id], onDelete: SetNull)
-  thumbnailForThemes    Theme[]     @relation("ThemeThumbnail")
-  frames                Frame[]
-  filterPreviews        Filter[]
-  poseGuides            PoseGuide[]
+  theme              Theme?      @relation("ThemeAssets", fields: [themeId], references: [id], onDelete: SetNull)
+  thumbnailForThemes Theme[]     @relation("ThemeThumbnail")
+  frames             Frame[]
+  filterPreviews     Filter[]
+  poseGuides         PoseGuide[]
 
   @@index([themeId, status])
   @@index([assetType, status, sortOrder])
@@ -130,28 +130,39 @@ model PoseGuide {
 }
 
 model ShareLink {
-  id             String    @id @default(uuid()) @db.Uuid
-  tokenHash      String    @unique @map("token_hash") @db.Char(64)
-  deleteTokenHash String   @unique @map("delete_token_hash") @db.Char(64)
-  storageKey     String    @unique @map("storage_key") @db.VarChar(512)
-  mimeType       String    @map("mime_type") @db.VarChar(100)
-  fileSizeBytes  BigInt    @map("file_size_bytes")
-  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  expiresAt      DateTime  @map("expires_at") @db.Timestamptz(3)
-  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(3)
-  consentVersion String    @map("consent_version") @db.VarChar(50)
+  id              String    @id @default(uuid()) @db.Uuid
+  tokenHash       String    @unique @map("token_hash") @db.Char(64)
+  deleteTokenHash String    @unique @map("delete_token_hash") @db.Char(64)
+  storageKey      String    @unique @map("storage_key") @db.VarChar(512)
+  mimeType        String    @map("mime_type") @db.VarChar(100)
+  fileSizeBytes   BigInt    @map("file_size_bytes")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  expiresAt       DateTime  @map("expires_at") @db.Timestamptz(3)
+  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz(3)
+  consentVersion  String    @map("consent_version") @db.VarChar(50)
 
   @@index([expiresAt, deletedAt])
   @@map("share_links")
 }
 
+model RemoteCameraSession {
+  sessionId String   @id @map("session_id") @db.VarChar(43)
+  offerSdp  String?  @map("offer_sdp") @db.Text
+  answerSdp String?  @map("answer_sdp") @db.Text
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(3)
+
+  @@index([expiresAt])
+  @@map("remote_camera_sessions")
+}
+
 model AdminUser {
-  id          String     @id @default(uuid()) @db.Uuid
-  email       String     @unique @db.VarChar(320)
-  credentialHash String  @unique @map("credential_hash") @db.Char(64)
-  role        AdminRole  @default(EDITOR)
-  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
-  lastLoginAt DateTime?  @map("last_login_at") @db.Timestamptz(3)
+  id             String    @id @default(uuid()) @db.Uuid
+  email          String    @unique @db.VarChar(320)
+  credentialHash String    @unique @map("credential_hash") @db.Char(64)
+  role           AdminRole @default(EDITOR)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  lastLoginAt    DateTime? @map("last_login_at") @db.Timestamptz(3)
 
   @@index([role])
   @@map("admin_users")
