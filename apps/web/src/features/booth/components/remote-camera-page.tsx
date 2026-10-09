@@ -244,7 +244,7 @@ export function RemoteCameraPage({ sessionId }: { sessionId: string }) {
           setError(
             turnConfigured
               ? "Koneksi kamera gagal. Periksa apakah server TURN aktif dan dapat dijangkau melalui jaringan ini."
-              : "Koneksi langsung gagal. Agar perangkat di jaringan berbeda bisa tersambung, API perlu dikonfigurasi dengan TURN_URLS dan TURN_SHARED_SECRET.",
+              : "Koneksi langsung gagal. Agar perangkat di jaringan berbeda bisa tersambung, API perlu dikonfigurasi dengan relay TURN seperti Metered Open Relay.",
           );
           deletePairing(sessionId);
         }

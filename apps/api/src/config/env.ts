@@ -65,6 +65,8 @@ const RawApiEnvironmentSchema = z.object({
     .min(60)
     .max(3600)
     .default(900),
+  METERED_TURN_APP_NAME: optionalEnvironmentString,
+  METERED_TURN_API_KEY: optionalEnvironmentString,
   S3_BUCKET: optionalEnvironmentString,
   S3_REGION: optionalEnvironmentString,
   S3_ACCESS_KEY_ID: optionalEnvironmentString,
@@ -72,6 +74,19 @@ const RawApiEnvironmentSchema = z.object({
   S3_ENDPOINT: optionalEnvironmentUrl,
   ASSET_PUBLIC_BASE_URL: optionalEnvironmentUrl,
 });
+
+export type TurnConfiguration =
+  | {
+      provider: "coturn";
+      urls: string[];
+      sharedSecret: string;
+      credentialTtlSeconds: number;
+    }
+  | {
+      provider: "metered";
+      appName: string;
+      apiKey: string;
+    };
 
 export interface ApiEnvironment {
   environment: "development" | "test" | "production";
@@ -90,11 +105,7 @@ export interface ApiEnvironment {
     secretAccessKey: string;
     endpoint?: string;
   } | null;
-  turn: {
-    urls: string[];
-    sharedSecret: string;
-    credentialTtlSeconds: number;
-  } | null;
+  turn: TurnConfiguration | null;
   assetPublicBaseUrl?: string;
 }
 
@@ -150,7 +161,9 @@ export function parseApiEnvironment(
 
   const raw = parsed.data;
   const turnUrls = raw.TURN_URLS
-    ? raw.TURN_URLS.split(",").map((url) => url.trim()).filter(Boolean)
+    ? raw.TURN_URLS.split(",")
+        .map((url) => url.trim())
+        .filter(Boolean)
     : [];
   const hasTurnUrls = turnUrls.length > 0;
   const hasTurnSecret = Boolean(raw.TURN_SHARED_SECRET);
@@ -175,6 +188,26 @@ export function parseApiEnvironment(
   if (turnUrls.length > 4) {
     throw new Error(
       "Invalid API configuration. TURN_URLS must contain no more than four URLs.",
+    );
+  }
+  const hasMeteredAppName = Boolean(raw.METERED_TURN_APP_NAME);
+  const hasMeteredApiKey = Boolean(raw.METERED_TURN_API_KEY);
+  if (hasMeteredAppName !== hasMeteredApiKey) {
+    throw new Error(
+      "Invalid API configuration. METERED_TURN_APP_NAME and METERED_TURN_API_KEY must both be configured.",
+    );
+  }
+  if (
+    hasMeteredAppName &&
+    !/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i.test(raw.METERED_TURN_APP_NAME!)
+  ) {
+    throw new Error(
+      "Invalid API configuration. METERED_TURN_APP_NAME must be a valid Metered app subdomain.",
+    );
+  }
+  if (hasTurnUrls && hasMeteredAppName) {
+    throw new Error(
+      "Invalid API configuration. Configure either Coturn or Metered TURN, not both.",
     );
   }
   const s3Fields = [
@@ -256,11 +289,18 @@ export function parseApiEnvironment(
         : null,
     turn: hasTurnUrls
       ? {
+          provider: "coturn",
           urls: turnUrls,
           sharedSecret: raw.TURN_SHARED_SECRET!,
           credentialTtlSeconds: raw.TURN_CREDENTIAL_TTL_SECONDS,
         }
-      : null,
+      : hasMeteredAppName
+        ? {
+            provider: "metered",
+            appName: raw.METERED_TURN_APP_NAME!,
+            apiKey: raw.METERED_TURN_API_KEY!,
+          }
+        : null,
     ...(assetBaseUrl ? { assetPublicBaseUrl: assetBaseUrl } : {}),
   };
 }

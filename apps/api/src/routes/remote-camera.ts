@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { FastifyPluginAsync } from "fastify";
 import QRCode from "qrcode";
 import { HttpApiError } from "../lib/api-error.js";
+import type { TurnConfiguration } from "../config/env.js";
 import {
   type RemoteCameraSessionStore,
   type RemoteCameraSession,
@@ -36,11 +37,7 @@ const answerSchema = z
 interface RemoteCameraRouteOptions {
   registry: RemoteCameraSessionStore;
   webOrigin: string;
-  turn: {
-    urls: string[];
-    sharedSecret: string;
-    credentialTtlSeconds: number;
-  } | null;
+  turn: TurnConfiguration | null;
 }
 
 interface IceServerEntry {
@@ -49,22 +46,117 @@ interface IceServerEntry {
   credential?: string;
 }
 
-function createIceServerConfiguration(
+function createCoturnIceServer(
   sessionId: string,
-  turn: RemoteCameraRouteOptions["turn"],
-): { iceServers: IceServerEntry[]; turnConfigured: boolean } {
-  const iceServers: IceServerEntry[] = [
-    { urls: "stun:stun.l.google.com:19302" },
-  ];
-  if (!turn) return { iceServers, turnConfigured: false };
-
+  turn: Extract<TurnConfiguration, { provider: "coturn" }>,
+): IceServerEntry {
   const expiry = Math.floor(Date.now() / 1000) + turn.credentialTtlSeconds;
   const username = `${expiry}:${sessionId}`;
   const credential = createHmac("sha1", turn.sharedSecret)
     .update(username)
     .digest("base64");
-  iceServers.push({ urls: turn.urls, username, credential });
-  return { iceServers, turnConfigured: true };
+  return { urls: turn.urls, username, credential };
+}
+
+const meterIceServerSchema = z
+  .object({
+    urls: z.union([
+      z.string().min(1).max(512),
+      z.array(z.string().min(1).max(512)).min(1).max(4),
+    ]),
+    username: z.string().max(256).optional(),
+    credential: z.string().max(512).optional(),
+  })
+  .strict();
+
+function readMeteredIceServers(value: unknown): IceServerEntry[] | null {
+  const parsed = z.array(meterIceServerSchema).min(1).max(7).safeParse(value);
+  if (!parsed.success) return null;
+
+  let hasTurnServer = false;
+  const iceServers: IceServerEntry[] = [];
+  for (const entry of parsed.data) {
+    const urls = typeof entry.urls === "string" ? [entry.urls] : entry.urls;
+    if (urls.some((url) => !/^(stun|stuns|turn|turns):[^\s,]+$/i.test(url))) {
+      return null;
+    }
+
+    const usesTurn = urls.some((url) => /^turns?:/i.test(url));
+    if (usesTurn) {
+      if (!entry.username || !entry.credential) return null;
+      hasTurnServer = true;
+      iceServers.push({
+        urls: entry.urls,
+        username: entry.username,
+        credential: entry.credential,
+      });
+    } else {
+      if (entry.username !== undefined || entry.credential !== undefined) {
+        return null;
+      }
+      iceServers.push({ urls: entry.urls });
+    }
+  }
+
+  return hasTurnServer ? iceServers : null;
+}
+
+async function fetchMeteredIceServers(
+  turn: Extract<TurnConfiguration, { provider: "metered" }>,
+): Promise<IceServerEntry[]> {
+  const url = new URL(
+    `/api/v1/turn/credentials`,
+    `https://${turn.appName}.metered.live`,
+  );
+  url.searchParams.set("apiKey", turn.apiKey);
+
+  try {
+    const response = await fetch(url, {
+      headers: { accept: "application/json" },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!response.ok) {
+      throw new Error("Metered credential request failed.");
+    }
+    const body = await response.text();
+    if (body.length > 16 * 1024) {
+      throw new Error("Metered response exceeded its size limit.");
+    }
+    const iceServers = readMeteredIceServers(JSON.parse(body) as unknown);
+    if (!iceServers) throw new Error("Metered response was invalid.");
+    return iceServers;
+  } catch {
+    throw new HttpApiError(
+      503,
+      "turn_provider_unavailable",
+      "Layanan relay kamera sementara tidak tersedia. Coba buat QR baru sebentar lagi.",
+    );
+  }
+}
+
+async function createIceServerConfiguration(
+  sessionId: string,
+  turn: RemoteCameraRouteOptions["turn"],
+): Promise<{ iceServers: IceServerEntry[]; turnConfigured: boolean }> {
+  if (!turn) {
+    return {
+      iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+      turnConfigured: false,
+    };
+  }
+  if (turn.provider === "metered") {
+    return {
+      iceServers: await fetchMeteredIceServers(turn),
+      turnConfigured: true,
+    };
+  }
+  return {
+    iceServers: [
+      { urls: "stun:stun.l.google.com:19302" },
+      createCoturnIceServer(sessionId, turn),
+    ],
+    turnConfigured: true,
+  };
 }
 
 function invalidRequest(message: string): HttpApiError {
@@ -192,7 +284,7 @@ export const registerRemoteCameraRoutes: FastifyPluginAsync<
     async (request, reply) => {
       const sessionId = readSessionId(request.params);
       await requireSession(registry, sessionId);
-      return reply.send(createIceServerConfiguration(sessionId, turn));
+      return reply.send(await createIceServerConfiguration(sessionId, turn));
     },
   );
 

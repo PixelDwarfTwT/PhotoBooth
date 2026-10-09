@@ -33,7 +33,14 @@ The `web` service binds to `api` as `API_SERVICE_URL` for server-rendered catalo
 
    Optional API values include `SHARE_CONSENT_VERSION`, `SHARE_TTL_HOURS`, `SHARE_MAX_BYTES`, and `SHARE_RATE_LIMIT_MAX`. To keep cloud sharing disabled, leave all S3 variables unset. To enable it later, add the complete S3 credentials to the API service environment only.
 
-   Remote camera pairing can use a Coturn-compatible TURN relay across networks. Add these values to the API service environment only (and to local `.env` for local API runs):
+   For a free managed relay, create a Metered account at [Open Relay](https://www.metered.ca/tools/openrelay/), then get the app subdomain and TURN credential API key from its dashboard. Add both values to the API service environment only (and to local `.env` for local API runs):
+
+   ```text
+   METERED_TURN_APP_NAME=<your Metered app subdomain, without .metered.live>
+   METERED_TURN_API_KEY=<TURN credential API key>
+   ```
+
+   The API requests the ICE server list from Metered and returns it to the peers through the existing session endpoint. The key stays server-side. Metered currently advertises 20 GB of free TURN relay traffic per month. If instead you operate a Coturn-compatible relay, use these values:
 
    ```text
    TURN_URLS=turn:turn.example.com:3478?transport=udp,turns:turn.example.com:5349?transport=tcp
@@ -41,7 +48,7 @@ The `web` service binds to `api` as `API_SERVICE_URL` for server-rendered catalo
    TURN_CREDENTIAL_TTL_SECONDS=900
    ```
 
-   In PowerShell, generate a 32-byte secret with `$bytes = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes); [BitConverter]::ToString($bytes).Replace('-', '').ToLower()`. Use the resulting 64-character hex value as the Coturn `static-auth-secret` and `TURN_SHARED_SECRET`; keep it in the API environment only. Configure the TURN service with the matching REST-auth shared secret and allow its advertised UDP/TCP relay ports through the firewall. The API creates short-lived browser credentials; it never returns the shared secret. Use TURN URIs such as `turn:relay.example.com:3478?transport=udp` (without `//`). With these variables unset, camera pairing keeps using STUN only, which may not connect through restrictive NAT or between some networks.
+   In PowerShell, generate a 32-byte secret with `$bytes = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes); [BitConverter]::ToString($bytes).Replace('-', '').ToLower()`. Use the resulting 64-character hex value as the Coturn `static-auth-secret` and `TURN_SHARED_SECRET`; keep it in the API environment only. Configure the TURN service with the matching REST-auth shared secret and allow its advertised UDP/TCP relay ports through the firewall. The API creates short-lived browser credentials; it never returns the shared secret. Use TURN URIs such as `turn:relay.example.com:3478?transport=udp` (without `//`). Set only one TURN provider. With both providers unset, camera pairing keeps using STUN only, which may not connect through restrictive NAT or between some networks.
 
 5. Do not create `API_SERVICE_URL` yourself. The web service binding injects it at runtime; it is not available during builds or in browser code.
 6. `NEXT_PUBLIC_SITE_URL` is optional on Vercel. Set it to the chosen HTTPS canonical origin if you use a custom domain. Otherwise the site uses Vercel's generated deployment URL. `NEXT_PUBLIC_API_ORIGIN` is not needed for this single-domain setup; only set it when deliberately pointing the web client at a separate API origin.
