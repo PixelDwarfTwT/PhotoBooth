@@ -62,6 +62,7 @@
 - Browser helper validates that response before passing `iceServers` to `RTCPeerConnection`.
 
 - [x] Parse `TURN_URLS`, `TURN_SHARED_SECRET`, and `TURN_CREDENTIAL_TTL_SECONDS` with paired-field and scheme validation; default TTL to 900 seconds, range 60–3600.
+- [x] Require a high-entropy hex shared secret and reject hierarchical `turn://` URIs.
 - [x] Inject the optional TURN settings into the remote-camera route.
 - [x] Add the rate-limited active-session ICE endpoint; return Google STUN plus optional expiry-prefixed username and HMAC-SHA1 Coturn password.
 - [x] Fetch and validate ICE configuration from both peers before constructing their peer connections; adjust cross-network failure copy based on `turnConfigured`.
@@ -87,8 +88,7 @@
 
 ### Task 4: Final review and integrate
 
-- [ ] Review the complete branch diff against the spec and Review Focus.
-- [ ] Run API and web package typechecks from the complete tree.
-- [ ] Report that cross-network relay requires the operator to provide a reachable Coturn service and configure the three TURN variables in local/Vercel API environment.
+- [x] Review the complete branch diff against the spec and Review Focus.
+- [x] Run API and web package typechecks from the complete tree.
+- [x] Document that cross-network relay requires a reachable Coturn service and the three TURN variables in local/Vercel API environment.
 - [ ] Fast-forward the feature branch into the original workspace branch and remove the temporary worktree.
-

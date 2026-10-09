@@ -29,6 +29,7 @@ During pointer movement, update the dragged handle's CSS position directly and k
 ## Interfaces and configuration
 
 - API environment: optional `TURN_URLS` (comma-separated `turn:`/`turns:` URLs), `TURN_SHARED_SECRET` (API-only Coturn REST secret), and optional `TURN_CREDENTIAL_TTL_SECONDS` (default 900; accepted range 60–3600).
+- TURN URLs use non-hierarchical `turn:`/`turns:` URI syntax without `//`. The API accepts a shared secret only when it is 64–128 hexadecimal characters generated from at least 32 random bytes.
 - API route: `GET /api/remote-camera/sessions/:sessionId/ice-servers`, requiring an active high-entropy session ID; returns STUN plus optional expiring TURN credentials and a `turnConfigured` boolean.
 - Browser clients validate the response and use the same ICE configuration for offer and answer.
 - Document the variables in `.env.example` and deployment setup guidance. Never add real credentials to tracked files.
