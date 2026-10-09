@@ -57,6 +57,14 @@ const RawApiEnvironmentSchema = z.object({
     .max(10 * 1024 * 1024)
     .default(10 * 1024 * 1024),
   SHARE_RATE_LIMIT_MAX: z.coerce.number().int().min(1).max(100).default(5),
+  TURN_URLS: optionalEnvironmentString,
+  TURN_SHARED_SECRET: optionalEnvironmentString,
+  TURN_CREDENTIAL_TTL_SECONDS: z.coerce
+    .number()
+    .int()
+    .min(60)
+    .max(3600)
+    .default(900),
   S3_BUCKET: optionalEnvironmentString,
   S3_REGION: optionalEnvironmentString,
   S3_ACCESS_KEY_ID: optionalEnvironmentString,
@@ -82,7 +90,34 @@ export interface ApiEnvironment {
     secretAccessKey: string;
     endpoint?: string;
   } | null;
+  turn: {
+    urls: string[];
+    sharedSecret: string;
+    credentialTtlSeconds: number;
+  } | null;
   assetPublicBaseUrl?: string;
+}
+
+function isValidTurnUrl(value: string): boolean {
+  if (!/^turns?:/i.test(value) || /[\s#@]/.test(value)) return false;
+  const authority = value.replace(/^turns?:/i, "").replace(/^\/\//, "");
+  if (!authority || authority.includes("/")) return false;
+
+  try {
+    const parsed = new URL(`https://${authority}`);
+    const transports = parsed.searchParams.getAll("transport");
+    return (
+      Boolean(parsed.hostname) &&
+      parsed.pathname === "/" &&
+      !parsed.username &&
+      !parsed.password &&
+      [...parsed.searchParams.keys()].every((key) => key === "transport") &&
+      transports.length <= 1 &&
+      transports.every((transport) => ["udp", "tcp", "tls"].includes(transport))
+    );
+  } catch {
+    return false;
+  }
 }
 
 export function parseApiEnvironment(
@@ -108,6 +143,26 @@ export function parseApiEnvironment(
   }
 
   const raw = parsed.data;
+  const turnUrls = raw.TURN_URLS
+    ? raw.TURN_URLS.split(",").map((url) => url.trim()).filter(Boolean)
+    : [];
+  const hasTurnUrls = turnUrls.length > 0;
+  const hasTurnSecret = Boolean(raw.TURN_SHARED_SECRET);
+  if (Boolean(raw.TURN_URLS) !== hasTurnUrls || hasTurnUrls !== hasTurnSecret) {
+    throw new Error(
+      "Invalid API configuration. TURN_URLS and TURN_SHARED_SECRET must both be configured with at least one URL.",
+    );
+  }
+  if (turnUrls.some((url) => !isValidTurnUrl(url))) {
+    throw new Error(
+      "Invalid API configuration. TURN_URLS must contain only valid turn: or turns: URLs.",
+    );
+  }
+  if (turnUrls.length > 4) {
+    throw new Error(
+      "Invalid API configuration. TURN_URLS must contain no more than four URLs.",
+    );
+  }
   const s3Fields = [
     raw.S3_BUCKET,
     raw.S3_REGION,
@@ -185,6 +240,13 @@ export function parseApiEnvironment(
             ...(raw.S3_ENDPOINT ? { endpoint: raw.S3_ENDPOINT } : {}),
           }
         : null,
+    turn: hasTurnUrls
+      ? {
+          urls: turnUrls,
+          sharedSecret: raw.TURN_SHARED_SECRET!,
+          credentialTtlSeconds: raw.TURN_CREDENTIAL_TTL_SECONDS,
+        }
+      : null,
     ...(assetBaseUrl ? { assetPublicBaseUrl: assetBaseUrl } : {}),
   };
 }

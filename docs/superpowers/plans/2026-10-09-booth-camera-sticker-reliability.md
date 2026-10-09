@@ -61,13 +61,13 @@
 - Add `GET /api/remote-camera/sessions/:sessionId/ice-servers` returning `{ iceServers: RTCIceServer[]; turnConfigured: boolean }` for an active session.
 - Browser helper validates that response before passing `iceServers` to `RTCPeerConnection`.
 
-- [ ] Parse `TURN_URLS`, `TURN_SHARED_SECRET`, and `TURN_CREDENTIAL_TTL_SECONDS` with paired-field and scheme validation; default TTL to 900 seconds, range 60–3600.
-- [ ] Inject the optional TURN settings into the remote-camera route.
-- [ ] Add the rate-limited active-session ICE endpoint; return Google STUN plus optional expiry-prefixed username and HMAC-SHA1 Coturn password.
-- [ ] Fetch and validate ICE configuration from both peers before constructing their peer connections; adjust cross-network failure copy based on `turnConfigured`.
-- [ ] Document variables with empty placeholders only and explain the external Coturn setup/firewall requirement.
-- [ ] Run API and web package typechecks; review that no shared secret is returned or logged.
-- [ ] Commit as `feat: support temporary TURN credentials for camera pairing`.
+- [x] Parse `TURN_URLS`, `TURN_SHARED_SECRET`, and `TURN_CREDENTIAL_TTL_SECONDS` with paired-field and scheme validation; default TTL to 900 seconds, range 60–3600.
+- [x] Inject the optional TURN settings into the remote-camera route.
+- [x] Add the rate-limited active-session ICE endpoint; return Google STUN plus optional expiry-prefixed username and HMAC-SHA1 Coturn password.
+- [x] Fetch and validate ICE configuration from both peers before constructing their peer connections; adjust cross-network failure copy based on `turnConfigured`.
+- [x] Document variables with empty placeholders only and explain the external Coturn setup/firewall requirement.
+- [x] Run API and web package typechecks; review that no shared secret is returned or logged.
+- [x] Commit as `feat: support temporary TURN credentials for camera pairing`.
 
 ### Task 3: Make sticker drag responsive
 

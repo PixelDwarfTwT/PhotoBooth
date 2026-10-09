@@ -106,6 +106,7 @@ export function buildServer(
   void app.register(registerRemoteCameraRoutes, {
     registry: remoteCameraRegistry,
     webOrigin: environment.webOrigin,
+    turn: environment.turn,
   });
 
   if (services) {

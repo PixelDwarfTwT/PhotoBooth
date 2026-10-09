@@ -14,6 +14,11 @@ export interface RemoteCameraSessionInfo {
   qrCodeDataUrl: string | null;
 }
 
+export interface RemoteCameraIceConfiguration {
+  iceServers: RTCIceServer[];
+  turnConfigured: boolean;
+}
+
 export interface RemoteCameraDescription {
   type: "offer" | "answer";
   sdp: string;
@@ -114,6 +119,75 @@ export function readRemoteCameraDescription(
     return null;
   }
   return { type: expectedType, sdp: candidate.sdp };
+}
+
+export function readRemoteCameraIceConfiguration(
+  value: unknown,
+): RemoteCameraIceConfiguration | null {
+  if (!value || typeof value !== "object") return null;
+  const candidate = value as Record<string, unknown>;
+  if (
+    typeof candidate.turnConfigured !== "boolean" ||
+    !Array.isArray(candidate.iceServers) ||
+    candidate.iceServers.length < 1 ||
+    candidate.iceServers.length > 8
+  ) {
+    return null;
+  }
+
+  const iceServers: RTCIceServer[] = [];
+  let hasTurnServer = false;
+  for (const item of candidate.iceServers) {
+    if (!item || typeof item !== "object") return null;
+    const entry = item as Record<string, unknown>;
+    const urls =
+      typeof entry.urls === "string"
+        ? [entry.urls]
+        : Array.isArray(entry.urls) &&
+            entry.urls.length > 0 &&
+            entry.urls.length <= 4 &&
+            entry.urls.every((url) => typeof url === "string")
+          ? (entry.urls as string[])
+          : null;
+    if (
+      !urls ||
+      urls.some(
+        (url) =>
+          url.length > 512 ||
+          !/^(stun|stuns|turn|turns):[^\s,]+$/i.test(url),
+      )
+    ) {
+      return null;
+    }
+
+    const usesTurn = urls.some((url) => /^turns?:/i.test(url));
+    if (usesTurn) {
+      hasTurnServer = true;
+      if (
+        typeof entry.username !== "string" ||
+        entry.username.length < 1 ||
+        entry.username.length > 256 ||
+        typeof entry.credential !== "string" ||
+        entry.credential.length < 1 ||
+        entry.credential.length > 512
+      ) {
+        return null;
+      }
+      iceServers.push({
+        urls,
+        username: entry.username,
+        credential: entry.credential,
+      });
+    } else {
+      if (entry.username !== undefined || entry.credential !== undefined) {
+        return null;
+      }
+      iceServers.push({ urls });
+    }
+  }
+
+  if (candidate.turnConfigured !== hasTurnServer) return null;
+  return { iceServers, turnConfigured: candidate.turnConfigured };
 }
 
 export function readRemoteCameraSessionInfo(

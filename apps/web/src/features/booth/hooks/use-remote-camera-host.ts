@@ -5,6 +5,7 @@ import { API_ORIGIN } from "@/lib/api-origin";
 import {
   canUseRemoteCameraHost,
   readRemoteCameraDescription,
+  readRemoteCameraIceConfiguration,
   readRemoteCameraSessionInfo,
 } from "../lib/remote-camera";
 
@@ -22,6 +23,7 @@ export interface RemoteCameraHostController {
 }
 
 const SESSION_ENDPOINT = "/api/remote-camera/sessions";
+const ICE_SERVERS_SUFFIX = "/ice-servers";
 const SIGNAL_POLL_INTERVAL_MS = 650;
 const MAX_SIGNAL_WAIT_MS = 3 * 60_000;
 const MAX_ICE_GATHERING_MS = 15_000;
@@ -210,6 +212,7 @@ export function useRemoteCameraHost(): RemoteCameraHostController {
     setPhoneUrl(null);
 
     let peerConnection: RTCPeerConnection | null = null;
+    let turnConfigured = false;
     try {
       const createResponse = await fetch(`${API_ORIGIN}${SESSION_ENDPOINT}`, {
         method: "POST",
@@ -232,8 +235,21 @@ export function useRemoteCameraHost(): RemoteCameraHostController {
       setQrCodeUrl(session.qrCodeDataUrl);
       setPhoneUrl(session.phoneUrl);
 
+      const iceResponse = await fetch(
+        `${API_ORIGIN}${SESSION_ENDPOINT}/${session.sessionId}${ICE_SERVERS_SUFFIX}`,
+        { cache: "no-store", signal: controller.signal },
+      );
+      if (!iceResponse.ok) throw new Error(await readApiError(iceResponse));
+      const iceConfiguration = readRemoteCameraIceConfiguration(
+        await iceResponse.json(),
+      );
+      if (!iceConfiguration) {
+        throw new Error("Konfigurasi ICE dari API tidak valid.");
+      }
+      turnConfigured = iceConfiguration.turnConfigured;
+
       peerConnection = new RTCPeerConnection({
-        iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+        iceServers: iceConfiguration.iceServers,
       });
       peerConnectionRef.current = peerConnection;
       peerConnection.addTransceiver("video", { direction: "recvonly" });
@@ -268,7 +284,9 @@ export function useRemoteCameraHost(): RemoteCameraHostController {
           setStream(null);
           setState("error");
           setError(
-            "Ponsel dan booth tidak dapat tersambung langsung. Coba jaringan Wi-Fi lain atau buka booth melalui HTTPS.",
+            turnConfigured
+              ? "Koneksi kamera gagal. Periksa apakah server TURN aktif dan dapat dijangkau melalui jaringan ini."
+              : "Koneksi langsung gagal. Agar perangkat di jaringan berbeda bisa tersambung, API perlu dikonfigurasi dengan TURN_URLS dan TURN_SHARED_SECRET.",
           );
           const failedSessionId = sessionIdRef.current;
           sessionIdRef.current = null;

@@ -7,6 +7,7 @@ import {
   isRemoteCameraSessionId,
   isTerminalRemoteCameraStatus,
   readRemoteCameraDescription,
+  readRemoteCameraIceConfiguration,
 } from "../lib/remote-camera";
 import styles from "./remote-camera.module.css";
 
@@ -14,6 +15,7 @@ type PhoneCameraState =
   "idle" | "requesting" | "waiting" | "connecting" | "connected" | "error";
 
 const SESSION_ENDPOINT = "/api/remote-camera/sessions";
+const ICE_SERVERS_SUFFIX = "/ice-servers";
 const POLL_INTERVAL_MS = 650;
 const MAX_SIGNAL_WAIT_MS = 3 * 60_000;
 const MAX_ICE_GATHERING_MS = 15_000;
@@ -191,6 +193,7 @@ export function RemoteCameraPage({ sessionId }: { sessionId: string }) {
 
     let localStream: MediaStream | null = null;
     let peerConnection: RTCPeerConnection | null = null;
+    let turnConfigured = false;
     try {
       localStream = await navigator.mediaDevices.getUserMedia({
         audio: false,
@@ -204,8 +207,21 @@ export function RemoteCameraPage({ sessionId }: { sessionId: string }) {
       streamRef.current = localStream;
       setStream(localStream);
 
+      const iceResponse = await fetch(
+        `${API_ORIGIN}${SESSION_ENDPOINT}/${sessionId}${ICE_SERVERS_SUFFIX}`,
+        { cache: "no-store", signal: controller.signal },
+      );
+      if (!iceResponse.ok) throw new Error(await readApiError(iceResponse));
+      const iceConfiguration = readRemoteCameraIceConfiguration(
+        await iceResponse.json(),
+      );
+      if (!iceConfiguration) {
+        throw new Error("Konfigurasi ICE dari API tidak valid.");
+      }
+      turnConfigured = iceConfiguration.turnConfigured;
+
       peerConnection = new RTCPeerConnection({
-        iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+        iceServers: iceConfiguration.iceServers,
       });
       peerConnectionRef.current = peerConnection;
       for (const track of localStream.getTracks()) {
@@ -226,7 +242,9 @@ export function RemoteCameraPage({ sessionId }: { sessionId: string }) {
           setState("error");
           setSessionUsed(true);
           setError(
-            "Koneksi langsung gagal. Minta booth membuat QR baru, lalu coba jaringan Wi-Fi yang sama.",
+            turnConfigured
+              ? "Koneksi kamera gagal. Periksa apakah server TURN aktif dan dapat dijangkau melalui jaringan ini."
+              : "Koneksi langsung gagal. Agar perangkat di jaringan berbeda bisa tersambung, API perlu dikonfigurasi dengan TURN_URLS dan TURN_SHARED_SECRET.",
           );
           deletePairing(sessionId);
         }

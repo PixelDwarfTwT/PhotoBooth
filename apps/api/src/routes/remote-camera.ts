@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import { z } from "zod";
 import type { FastifyPluginAsync } from "fastify";
 import QRCode from "qrcode";
@@ -35,6 +36,35 @@ const answerSchema = z
 interface RemoteCameraRouteOptions {
   registry: RemoteCameraSessionStore;
   webOrigin: string;
+  turn: {
+    urls: string[];
+    sharedSecret: string;
+    credentialTtlSeconds: number;
+  } | null;
+}
+
+interface IceServerEntry {
+  urls: string | string[];
+  username?: string;
+  credential?: string;
+}
+
+function createIceServerConfiguration(
+  sessionId: string,
+  turn: RemoteCameraRouteOptions["turn"],
+): { iceServers: IceServerEntry[]; turnConfigured: boolean } {
+  const iceServers: IceServerEntry[] = [
+    { urls: "stun:stun.l.google.com:19302" },
+  ];
+  if (!turn) return { iceServers, turnConfigured: false };
+
+  const expiry = Math.floor(Date.now() / 1000) + turn.credentialTtlSeconds;
+  const username = `${expiry}:${sessionId}`;
+  const credential = createHmac("sha1", turn.sharedSecret)
+    .update(username)
+    .digest("base64");
+  iceServers.push({ urls: turn.urls, username, credential });
+  return { iceServers, turnConfigured: true };
 }
 
 function invalidRequest(message: string): HttpApiError {
@@ -109,7 +139,7 @@ function handleWriteResult(result: SessionWriteResult) {
 
 export const registerRemoteCameraRoutes: FastifyPluginAsync<
   RemoteCameraRouteOptions
-> = async (app, { registry, webOrigin }) => {
+> = async (app, { registry, webOrigin, turn }) => {
   app.addHook("onRequest", async (_request, reply) => {
     reply.header("Cache-Control", "no-store").header("Pragma", "no-cache");
   });
@@ -151,6 +181,18 @@ export const registerRemoteCameraRoutes: FastifyPluginAsync<
         phoneUrl,
         qrCodeDataUrl,
       });
+    },
+  );
+
+  app.get<{ Params: { sessionId: string } }>(
+    "/api/remote-camera/sessions/:sessionId/ice-servers",
+    {
+      config: { rateLimit: { max: 20, timeWindow: "1 minute" } },
+    },
+    async (request, reply) => {
+      const sessionId = readSessionId(request.params);
+      await requireSession(registry, sessionId);
+      return reply.send(createIceServerConfiguration(sessionId, turn));
     },
   );
 
