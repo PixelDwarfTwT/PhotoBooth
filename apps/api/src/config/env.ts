@@ -99,8 +99,14 @@ export interface ApiEnvironment {
 }
 
 function isValidTurnUrl(value: string): boolean {
-  if (!/^turns?:/i.test(value) || /[\s#@]/.test(value)) return false;
-  const authority = value.replace(/^turns?:/i, "").replace(/^\/\//, "");
+  if (
+    !/^turns?:/i.test(value) ||
+    /^turns?:\/\//i.test(value) ||
+    /[\s#@]/.test(value)
+  ) {
+    return false;
+  }
+  const authority = value.replace(/^turns?:/i, "");
   if (!authority || authority.includes("/")) return false;
 
   try {
@@ -151,6 +157,14 @@ export function parseApiEnvironment(
   if (Boolean(raw.TURN_URLS) !== hasTurnUrls || hasTurnUrls !== hasTurnSecret) {
     throw new Error(
       "Invalid API configuration. TURN_URLS and TURN_SHARED_SECRET must both be configured with at least one URL.",
+    );
+  }
+  if (
+    hasTurnSecret &&
+    !/^(?:[0-9a-f]{2}){32,64}$/i.test(raw.TURN_SHARED_SECRET!)
+  ) {
+    throw new Error(
+      "Invalid API configuration. TURN_SHARED_SECRET must be 64–128 hexadecimal characters generated from at least 32 random bytes.",
     );
   }
   if (turnUrls.some((url) => !isValidTurnUrl(url))) {
