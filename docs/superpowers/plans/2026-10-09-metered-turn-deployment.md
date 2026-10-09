@@ -8,7 +8,7 @@
 
 **Tech Stack:** TypeScript, Fastify, Zod, native Fetch, Vercel multi-service deployment.
 
-**Spec:** User selected the free Metered Open Relay option and authorized deployment. Metered account/API key is an external prerequisite and is not yet available.
+**Spec:** User asked which free option fits and asked us to handle deployment; Metered Open Relay was selected as the free provider. Metered account/API key is an external prerequisite and is not yet available.
 
 ## Global Constraints
 
@@ -41,5 +41,7 @@
 
 - [x] Document Metered account setup and API-only Vercel environment variables.
 - [x] Typecheck API and web; local production build completed with temporary HTTPS origin values.
-- [ ] Deploy the production services through Vercel CLI.
+- [x] Deploy the production services through Vercel CLI and confirm `/` and `/api/health` respond with HTTP 200.
+
+**Activation prerequisite:** Production does not yet have `METERED_TURN_APP_NAME` or `METERED_TURN_API_KEY`; TURN remains STUN-only until the operator creates a Metered account and adds those two API-only Production variables.
 - [ ] Confirm the production URL and explain the remaining API-key activation step.
