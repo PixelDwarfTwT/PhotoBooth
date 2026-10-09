@@ -91,4 +91,4 @@
 - [x] Review the complete branch diff against the spec and Review Focus.
 - [x] Run API and web package typechecks from the complete tree.
 - [x] Document that cross-network relay requires a reachable Coturn service and the three TURN variables in local/Vercel API environment.
-- [ ] Fast-forward the feature branch into the original workspace branch and remove the temporary worktree.
+- [x] Fast-forward the feature branch into the original workspace branch and remove the temporary worktree registration.
