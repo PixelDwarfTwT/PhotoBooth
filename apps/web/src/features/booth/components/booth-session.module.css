@@ -948,7 +948,10 @@
   pointer-events: auto;
   text-shadow: 0 2px 7px rgb(0 0 0 / 88%);
   touch-action: none;
-  transform: translate(-50%, -50%);
+  transform: translate(
+    calc(-50% + var(--sticker-drag-x, 0px)),
+    calc(-50% + var(--sticker-drag-y, 0px))
+  );
   user-select: none;
 }
 

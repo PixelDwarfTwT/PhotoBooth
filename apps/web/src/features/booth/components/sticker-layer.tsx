@@ -10,8 +10,21 @@ interface StickerLayerProps {
   selectedId: string | null;
   onSelect: (id: string) => void;
   onMove: (id: string, x: number, y: number) => void;
+  onDragChange: (id: string | null) => void;
   onRemove: (id: string) => void;
   onResize: (id: string, difference: number) => void;
+}
+
+interface ActiveStickerDrag {
+  pointerId: number;
+  stickerId: string;
+  pointerStartX: number;
+  pointerStartY: number;
+  stickerStartX: number;
+  stickerStartY: number;
+  latestX: number;
+  latestY: number;
+  moved: boolean;
 }
 
 function constrain(value: number): number {
@@ -23,11 +36,12 @@ export function StickerLayer({
   selectedId,
   onSelect,
   onMove,
+  onDragChange,
   onRemove,
   onResize,
 }: StickerLayerProps) {
   const layerRef = useRef<HTMLDivElement>(null);
-  const activePointerId = useRef<number | null>(null);
+  const activeDragRef = useRef<ActiveStickerDrag | null>(null);
   const [scale, setScale] = useState(0.5);
 
   useEffect(() => {
@@ -53,32 +67,101 @@ export function StickerLayer({
     event: PointerEvent<HTMLButtonElement>,
     sticker: StickerPlacement,
   ) {
-    activePointerId.current = event.pointerId;
+    const layer = layerRef.current;
+    if (!layer || activeDragRef.current) return;
+
+    const bounds = layer.getBoundingClientRect();
+    if (bounds.width < 1 || bounds.height < 1) return;
+
+    activeDragRef.current = {
+      pointerId: event.pointerId,
+      stickerId: sticker.id,
+      pointerStartX: (event.clientX - bounds.left) / bounds.width,
+      pointerStartY: (event.clientY - bounds.top) / bounds.height,
+      stickerStartX: sticker.x,
+      stickerStartY: sticker.y,
+      latestX: sticker.x,
+      latestY: sticker.y,
+      moved: false,
+    };
     event.currentTarget.setPointerCapture(event.pointerId);
     event.preventDefault();
     onSelect(sticker.id);
   }
 
   function handlePointerMove(event: PointerEvent<HTMLButtonElement>) {
-    if (activePointerId.current !== event.pointerId || !layerRef.current) {
+    const drag = activeDragRef.current;
+    const layer = layerRef.current;
+    if (!drag || drag.pointerId !== event.pointerId || !layer) return;
+
+    const bounds = layer.getBoundingClientRect();
+    if (bounds.width < 1 || bounds.height < 1) return;
+
+    const pointerX = (event.clientX - bounds.left) / bounds.width;
+    const pointerY = (event.clientY - bounds.top) / bounds.height;
+    const nextX = constrain(
+      drag.stickerStartX + pointerX - drag.pointerStartX,
+    );
+    const nextY = constrain(
+      drag.stickerStartY + pointerY - drag.pointerStartY,
+    );
+    if (
+      !drag.moved &&
+      nextX === drag.stickerStartX &&
+      nextY === drag.stickerStartY
+    ) {
       return;
     }
 
-    const bounds = layerRef.current.getBoundingClientRect();
-    if (bounds.width < 1 || bounds.height < 1) return;
-    onMove(
-      event.currentTarget.dataset.stickerId ?? "",
-      constrain((event.clientX - bounds.left) / bounds.width),
-      constrain((event.clientY - bounds.top) / bounds.height),
+    if (!drag.moved) {
+      drag.moved = true;
+      onDragChange(drag.stickerId);
+    }
+    drag.latestX = nextX;
+    drag.latestY = nextY;
+    event.currentTarget.style.setProperty(
+      "--sticker-drag-x",
+      `${(nextX - drag.stickerStartX) * bounds.width}px`,
+    );
+    event.currentTarget.style.setProperty(
+      "--sticker-drag-y",
+      `${(nextY - drag.stickerStartY) * bounds.height}px`,
     );
   }
 
   function handlePointerUp(event: PointerEvent<HTMLButtonElement>) {
-    if (activePointerId.current === event.pointerId) {
-      activePointerId.current = null;
-      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-        event.currentTarget.releasePointerCapture(event.pointerId);
+    const drag = activeDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+
+    const bounds = layerRef.current?.getBoundingClientRect();
+    if (drag.moved) {
+      if (bounds && bounds.width >= 1 && bounds.height >= 1) {
+        const pointerX = (event.clientX - bounds.left) / bounds.width;
+        const pointerY = (event.clientY - bounds.top) / bounds.height;
+        drag.latestX = constrain(
+          drag.stickerStartX + pointerX - drag.pointerStartX,
+        );
+        drag.latestY = constrain(
+          drag.stickerStartY + pointerY - drag.pointerStartY,
+        );
+        event.currentTarget.style.setProperty(
+          "--sticker-drag-x",
+          `${(drag.latestX - drag.stickerStartX) * bounds.width}px`,
+        );
+        event.currentTarget.style.setProperty(
+          "--sticker-drag-y",
+          `${(drag.latestY - drag.stickerStartY) * bounds.height}px`,
+        );
       }
+      onMove(drag.stickerId, drag.latestX, drag.latestY);
+      onDragChange(null);
+    }
+
+    activeDragRef.current = null;
+    event.currentTarget.style.removeProperty("--sticker-drag-x");
+    event.currentTarget.style.removeProperty("--sticker-drag-y");
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
     }
   }
 

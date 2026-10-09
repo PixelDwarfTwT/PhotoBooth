@@ -78,12 +78,12 @@
 **Interfaces:**
 - `StickerLayer` adds a drag-state callback; existing `onMove` remains the committed position update.
 
-- [ ] Keep active sticker ID, initial position, and latest normalized pointer position in refs.
-- [ ] Update the active handle's `left` and `top` directly during pointer events; do not invoke `onMove` from `pointermove`.
-- [ ] Tell the editor which sticker is being dragged so composition omits only that sticker until drag completion.
-- [ ] Commit the final position once on pointer up/cancel and restore the sticker to composition; preserve keyboard handling.
-- [ ] Run the web package typecheck and review that pointermove has no state update or full-compositor dependency.
-- [ ] Commit as `fix: keep sticker dragging responsive`.
+- [x] Keep active sticker ID, initial position, and latest normalized pointer position in refs.
+- [x] Move the active handle with transient CSS transforms during pointer events; do not invoke `onMove` from `pointermove`.
+- [x] Tell the editor which sticker is being dragged so composition omits only that sticker until drag completion.
+- [x] Commit the final position once on pointer up/cancel and restore the sticker to composition; preserve keyboard handling.
+- [x] Run the web package typecheck and review that pointermove has no state update or full-compositor dependency.
+- [x] Commit as `fix: keep sticker dragging responsive`.
 
 ### Task 4: Final review and integrate
 

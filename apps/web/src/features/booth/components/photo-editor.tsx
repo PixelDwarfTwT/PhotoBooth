@@ -73,6 +73,9 @@ export function PhotoEditor({
   const [removeFrameBackground, setRemoveFrameBackground] = useState(true);
   const [frameBackgroundNotice, setFrameBackgroundNotice] = useState("");
   const [stickers, setStickers] = useState<StickerPlacement[]>([]);
+  const [draggingStickerId, setDraggingStickerId] = useState<string | null>(
+    null,
+  );
   const [selectedStickerId, setSelectedStickerId] = useState<string | null>(
     null,
   );
@@ -178,7 +181,9 @@ export function PhotoEditor({
         : (frameLayouts[0] ?? "strip"),
       filter,
       filterIntensity: filterStrength,
-      stickers,
+      stickers: draggingStickerId
+        ? stickers.filter((sticker) => sticker.id !== draggingStickerId)
+        : stickers,
       frame: activeFrame.layoutConfig,
       frameAssetUrl: activeFrame.assetUrl,
       removeFrameBackground,
@@ -212,6 +217,7 @@ export function PhotoEditor({
   }, [
     activeFrame.assetUrl,
     activeFrame.layoutConfig,
+    draggingStickerId,
     filter,
     filterStrength,
     frameLayouts,
@@ -500,6 +506,7 @@ export function PhotoEditor({
                 selectedId={selectedStickerId}
                 onSelect={setSelectedStickerId}
                 onMove={moveSticker}
+                onDragChange={setDraggingStickerId}
                 onRemove={removeSticker}
                 onResize={resizeSticker}
               />
