@@ -122,7 +122,6 @@ export function BoothSession() {
   );
   const videoRef = useRef<HTMLVideoElement>(null);
   const [countdownSeconds, setCountdownSeconds] = useState(3);
-  const [mirror, setMirror] = useState(true);
   const [selectedFilter, setSelectedFilter] = useState<BoothFilter>("natural");
   const [selectedFilterIntensity, setSelectedFilterIntensity] = useState(1);
   const [poseGuides, setPoseGuides] = useState(LOCAL_POSE_GUIDES);
@@ -399,7 +398,7 @@ export function BoothSession() {
           <div className={styles.videoFrame}>
             <video
               ref={videoRef}
-              className={mirror ? styles.videoMirrored : styles.video}
+              className={styles.video}
               style={{
                 filter: getBoothFilter(selectedFilter, selectedFilterIntensity)
                   .css,
@@ -503,15 +502,6 @@ export function BoothSession() {
 
           {capture.photos.length === 0 ? (
             <>
-              <label className={styles.checkField}>
-                <input
-                  type="checkbox"
-                  checked={mirror}
-                  onChange={(event) => setMirror(event.currentTarget.checked)}
-                  disabled={settingsLocked}
-                />
-                <span>Cerminkan pratinjau dan hasil foto</span>
-              </label>
               <label className={styles.field} htmlFor="preview-filter">
                 <span>Filter pratinjau</span>
                 <select
@@ -671,7 +661,6 @@ export function BoothSession() {
         {capture.photos.length === CAPTURE_PHOTO_COUNT ? (
           <PhotoEditor
             photos={capture.photos}
-            mirror={mirror}
             filter={selectedFilter}
             onFilterChange={setSelectedFilter}
             onFilterIntensityChange={setSelectedFilterIntensity}

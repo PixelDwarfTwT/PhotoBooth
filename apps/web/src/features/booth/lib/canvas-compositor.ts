@@ -48,7 +48,6 @@ export interface CompositionInput {
   layout: BoothLayout;
   filter: BoothFilter;
   filterIntensity: number;
-  mirror: boolean;
   stickers: StickerPlacement[];
   frame: FrameLayoutConfig;
   frameAssetUrl: string | null;
@@ -289,7 +288,6 @@ function drawCover(
   sourceWidth: number,
   sourceHeight: number,
   cell: PhotoCell,
-  mirror: boolean,
   verticalPositionY: number,
 ): void {
   const crop = getCoverSourceCrop(
@@ -301,10 +299,6 @@ function drawCover(
   );
 
   context.save();
-  if (mirror) {
-    context.translate(cell.x * 2 + cell.width, 0);
-    context.scale(-1, 1);
-  }
   context.drawImage(
     image,
     crop.sourceX,
@@ -493,7 +487,6 @@ export async function renderComposition(
         photo.width,
         photo.height,
         cell,
-        input.mirror,
         input.frame.photoCropPositionY ?? 0.5,
       );
       if (filterSupported) context.filter = "none";

@@ -34,7 +34,6 @@ import styles from "./booth-session.module.css";
 
 interface PhotoEditorProps {
   photos: CapturedPhoto[];
-  mirror: boolean;
   filter: BoothFilter;
   onFilterChange: (filter: BoothFilter) => void;
   onFilterIntensityChange: (intensity: number) => void;
@@ -50,7 +49,6 @@ function createStickerId(): string {
 
 export function PhotoEditor({
   photos,
-  mirror,
   filter,
   onFilterChange,
   onFilterIntensityChange,
@@ -180,7 +178,6 @@ export function PhotoEditor({
         : (frameLayouts[0] ?? "strip"),
       filter,
       filterIntensity: filterStrength,
-      mirror,
       stickers,
       frame: activeFrame.layoutConfig,
       frameAssetUrl: activeFrame.assetUrl,
@@ -219,7 +216,6 @@ export function PhotoEditor({
     filterStrength,
     frameLayouts,
     layout,
-    mirror,
     photos,
     removeFrameBackground,
     stickers,

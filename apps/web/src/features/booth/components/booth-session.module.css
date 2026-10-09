@@ -445,15 +445,10 @@
   line-height: 0.96;
 }
 
-.video,
-.videoMirrored {
+.video {
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
-
-.videoMirrored {
-  transform: scaleX(-1);
 }
 
 .videoPlaceholder {
