@@ -11,7 +11,7 @@ test("local development does not require deployment origins", () => {
 test("production requires HTTPS site and API origins", () => {
   assert.throws(
     () => validateProductionPublicOrigins({ NODE_ENV: "production" }),
-    /NEXT_PUBLIC_SITE_URL is required/i,
+    /NEXT_PUBLIC_SITE_URL or VERCEL_URL is required/i,
   );
   assert.throws(
     () =>

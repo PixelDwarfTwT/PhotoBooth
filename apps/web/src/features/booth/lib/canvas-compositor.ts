@@ -45,6 +45,7 @@ interface DecodedFrameImage {
 
 export interface CompositionInput {
   photos: CapturedPhoto[];
+  photoCropPositions?: Record<string, PhotoCropPosition>;
   layout: BoothLayout;
   filter: BoothFilter;
   filterIntensity: number;
@@ -53,14 +54,27 @@ export interface CompositionInput {
   frameAssetUrl: string | null;
   removeFrameBackground: boolean;
   onFrameBackgroundRemovalFailure?: () => void;
+  onPhotoCells?: (geometry: PhotoCropGeometry) => void;
   isCurrent?: () => boolean;
 }
 
-interface PhotoCell {
+export interface PhotoCell {
   x: number;
   y: number;
   width: number;
   height: number;
+}
+
+export interface PhotoCropPosition {
+  x: number;
+  y: number;
+}
+
+export interface PhotoCropGeometry {
+  width: number;
+  height: number;
+  cells: PhotoCell[];
+  frameLayer: HTMLCanvasElement | null;
 }
 
 export interface CoverSourceCrop {
@@ -76,10 +90,12 @@ export function getCoverSourceCrop(
   destinationWidth: number,
   destinationHeight: number,
   verticalPositionY = 0.5,
+  horizontalPositionX = 0.5,
 ): CoverSourceCrop {
   const sourceRatio = sourceWidth / sourceHeight;
   const destinationRatio = destinationWidth / destinationHeight;
   const verticalAnchor = Math.min(1, Math.max(0, verticalPositionY));
+  const horizontalAnchor = Math.min(1, Math.max(0, horizontalPositionX));
   let sourceX = 0;
   let sourceY = 0;
   let cropWidth = sourceWidth;
@@ -87,13 +103,49 @@ export function getCoverSourceCrop(
 
   if (sourceRatio > destinationRatio) {
     cropWidth = sourceHeight * destinationRatio;
-    sourceX = (sourceWidth - cropWidth) / 2;
+    sourceX = (sourceWidth - cropWidth) * horizontalAnchor;
   } else {
     cropHeight = sourceWidth / destinationRatio;
     sourceY = (sourceHeight - cropHeight) * verticalAnchor;
   }
 
   return { sourceX, sourceY, cropWidth, cropHeight };
+}
+
+export function moveCoverCropPosition(
+  position: PhotoCropPosition,
+  sourceWidth: number,
+  sourceHeight: number,
+  destinationWidth: number,
+  destinationHeight: number,
+  deltaX: number,
+  deltaY: number,
+): PhotoCropPosition {
+  const crop = getCoverSourceCrop(
+    sourceWidth,
+    sourceHeight,
+    destinationWidth,
+    destinationHeight,
+    position.y,
+    position.x,
+  );
+  const horizontalTravel = sourceWidth - crop.cropWidth;
+  const verticalTravel = sourceHeight - crop.cropHeight;
+  const x =
+    horizontalTravel > 0 && destinationWidth > 0
+      ? position.x -
+        (deltaX * crop.cropWidth) / destinationWidth / horizontalTravel
+      : position.x;
+  const y =
+    verticalTravel > 0 && destinationHeight > 0
+      ? position.y -
+        (deltaY * crop.cropHeight) / destinationHeight / verticalTravel
+      : position.y;
+
+  return {
+    x: Math.min(1, Math.max(0, x)),
+    y: Math.min(1, Math.max(0, y)),
+  };
 }
 
 async function loadPhoto(photo: CapturedPhoto): Promise<CanvasPhoto> {
@@ -288,14 +340,15 @@ function drawCover(
   sourceWidth: number,
   sourceHeight: number,
   cell: PhotoCell,
-  verticalPositionY: number,
+  position: PhotoCropPosition,
 ): void {
   const crop = getCoverSourceCrop(
     sourceWidth,
     sourceHeight,
     cell.width,
     cell.height,
-    verticalPositionY,
+    position.y,
+    position.x,
   );
 
   context.save();
@@ -487,7 +540,10 @@ export async function renderComposition(
         photo.width,
         photo.height,
         cell,
-        input.frame.photoCropPositionY ?? 0.5,
+        input.photoCropPositions?.[photo.id] ?? {
+          x: 0.5,
+          y: input.frame.photoCropPositionY ?? 0.5,
+        },
       );
       if (filterSupported) context.filter = "none";
       context.restore();
@@ -516,9 +572,16 @@ export async function renderComposition(
       }
     }
 
+    let frameLayer: HTMLCanvasElement | null = null;
     if (frameOverlay) {
       const crop = frameCrop ?? frameOverlay.bounds;
-      context.drawImage(
+      frameLayer = document.createElement("canvas");
+      frameLayer.width = canvasWidth;
+      frameLayer.height = height;
+      const frameContext = frameLayer.getContext("2d");
+      if (!frameContext)
+        throw new Error("Lapisan bingkai tidak dapat dimulai.");
+      frameContext.drawImage(
         frameOverlay.source,
         crop.x,
         crop.y,
@@ -529,6 +592,7 @@ export async function renderComposition(
         canvasWidth,
         height,
       );
+      context.drawImage(frameLayer, 0, 0);
     }
 
     for (const sticker of input.stickers)
@@ -542,6 +606,7 @@ export async function renderComposition(
       throw new Error("Pratinjau photo strip tidak dapat ditampilkan.");
     targetContext.clearRect(0, 0, canvas.width, canvas.height);
     targetContext.drawImage(stagingCanvas, 0, 0);
+    input.onPhotoCells?.({ width: canvasWidth, height, cells, frameLayer });
 
     return input.filter === "natural" || filterSupported;
   } catch (error) {

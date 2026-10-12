@@ -915,6 +915,70 @@
   touch-action: pan-y;
 }
 
+.photoCropLayer {
+  position: absolute;
+  z-index: 1;
+  inset: 5px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.photoCropHandle {
+  position: absolute;
+  z-index: 2;
+  padding: 0;
+  border: 2px dashed transparent;
+  border-radius: 7px;
+  background: transparent;
+  cursor: grab;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+}
+
+.photoCropPreview {
+  position: absolute;
+  z-index: 0;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+.photoCropFrameLayer {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+  pointer-events: none;
+}
+
+.photoCropHandle:hover,
+.photoCropHandle:focus-visible {
+  border-color: rgb(255 255 255 / 88%);
+  background: rgb(255 255 255 / 5%);
+  box-shadow: inset 0 0 0 2px rgb(70 42 57 / 28%);
+}
+
+.photoCropHandle:active {
+  cursor: grabbing;
+}
+
+.photoCropHandle:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.photoCropHint {
+  width: min(100%, 600px);
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
 .compositionCanvas {
   display: block;
   width: 100%;
@@ -926,7 +990,7 @@
 
 .stickerLayer {
   position: absolute;
-  z-index: 1;
+  z-index: 2;
   inset: 0;
   overflow: hidden;
   pointer-events: none;

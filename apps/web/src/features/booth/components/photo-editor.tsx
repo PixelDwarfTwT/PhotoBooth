@@ -16,6 +16,7 @@ import {
   MAX_STICKER_SIZE,
   MIN_STICKER_SIZE,
   STICKER_SYMBOLS,
+  getBoothFilter,
   getFrameLayouts,
 } from "../lib/editor-options";
 import { API_ORIGIN } from "@/lib/api-origin";
@@ -24,11 +25,17 @@ import {
   getDefaultFrameId,
   prioritizeRemoteFrames,
 } from "../lib/frame-selection";
-import { canvasToBlob, renderComposition } from "../lib/canvas-compositor";
+import {
+  canvasToBlob,
+  renderComposition,
+  type PhotoCropGeometry,
+  type PhotoCropPosition,
+} from "../lib/canvas-compositor";
 import { createLoopGif, recordPhotoLoop } from "../lib/motion-export";
 import { MOTION_FILTERS, type MotionFilter } from "../lib/export-presets";
 import { createStoryBlob } from "../lib/story-export";
 import { StickerLayer } from "./sticker-layer";
+import { PhotoCropLayer } from "./photo-crop-layer";
 import { ShareControls } from "./share-controls";
 import styles from "./booth-session.module.css";
 
@@ -73,6 +80,11 @@ export function PhotoEditor({
   const [removeFrameBackground, setRemoveFrameBackground] = useState(true);
   const [frameBackgroundNotice, setFrameBackgroundNotice] = useState("");
   const [stickers, setStickers] = useState<StickerPlacement[]>([]);
+  const [photoCropPositions, setPhotoCropPositions] = useState<
+    Record<string, PhotoCropPosition>
+  >({});
+  const [photoCropGeometry, setPhotoCropGeometry] =
+    useState<PhotoCropGeometry | null>(null);
   const [draggingStickerId, setDraggingStickerId] = useState<string | null>(
     null,
   );
@@ -176,6 +188,7 @@ export function PhotoEditor({
 
     void renderComposition(canvas, {
       photos,
+      photoCropPositions,
       layout: frameLayouts.includes(layout)
         ? layout
         : (frameLayouts[0] ?? "strip"),
@@ -194,6 +207,7 @@ export function PhotoEditor({
           );
         }
       },
+      onPhotoCells: setPhotoCropGeometry,
       isCurrent: () => renderIdRef.current === renderId,
     })
       .then((filterApplied) => {
@@ -223,6 +237,7 @@ export function PhotoEditor({
     frameLayouts,
     layout,
     photos,
+    photoCropPositions,
     removeFrameBackground,
     stickers,
     renderAttempt,
@@ -275,6 +290,16 @@ export function PhotoEditor({
       ),
     );
   }, []);
+
+  const movePhotoCrop = useCallback(
+    (photoId: string, position: PhotoCropPosition) => {
+      setPhotoCropPositions((current) => ({
+        ...current,
+        [photoId]: position,
+      }));
+    },
+    [],
+  );
 
   const removeSticker = useCallback((id: string) => {
     setStickers((current) => current.filter((sticker) => sticker.id !== id));
@@ -501,6 +526,21 @@ export function PhotoEditor({
                 role="img"
                 aria-label={`Pratinjau photo strip ${layout === "strip" ? "memanjang" : "kolase"} dengan ${photos.length} foto${filter === "natural" ? "" : ` dan filter ${BOOTH_FILTERS.find((option) => option.key === filter)?.label}`}`}
               />
+              <PhotoCropLayer
+                photos={photos}
+                geometry={photoCropGeometry}
+                positions={photoCropPositions}
+                defaultPosition={{
+                  x: 0.5,
+                  y: activeFrame.layoutConfig.photoCropPositionY ?? 0.5,
+                }}
+                filterCss={
+                  filterFallback
+                    ? "none"
+                    : getBoothFilter(filter, filterStrength).css
+                }
+                onMove={movePhotoCrop}
+              />
               <StickerLayer
                 stickers={stickers}
                 selectedId={selectedStickerId}
@@ -511,6 +551,10 @@ export function PhotoEditor({
                 onResize={resizeSticker}
               />
             </div>
+            <p className={styles.photoCropHint}>
+              Seret tiap foto di pratinjau untuk mengatur posisinya sendiri.
+              Fokuskan foto lalu gunakan tombol panah untuk penyesuaian kecil.
+            </p>
           </div>
 
           {filterFallback ? (
